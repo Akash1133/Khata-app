@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  phone        String   @unique
+  name         String?
+  email        String?
+  businessName String?
+  createdAt    DateTime @default(now())
+  products     Product[]
+  parties      Party[]
+  transactions Transaction[]
+}
+
+model Product {
+  id                String            @id @default(cuid())
+  name              String
+  category          String            @default("General")
+  unit              String            @default("pcs")
+  quantity          Float             @default(0)
+  buyPrice          Float             @default(0)
+  sellPrice         Float             @default(0)
+  lowStockThreshold Int               @default(5)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  userId            String?
+  user              User?             @relation(fields: [userId], references: [id])
+  transactionItems  TransactionItem[]
+}
+
+model Party {
+  id           String        @id @default(cuid())
+  name         String
+  phone        String?
+  type         String        @default("customer")
+  balance      Float         @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  userId       String?
+  user         User?         @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+}
+
+model Transaction {
+  id        String            @id @default(cuid())
+  type      String
+  amount    Float
+  note      String?
+  date      DateTime          @default(now())
+  createdAt DateTime          @default(now())
+  userId    String?
+  user      User?             @relation(fields: [userId], references: [id])
+  partyId   String?
+  party     Party?            @relation(fields: [partyId], references: [id])
+  items     TransactionItem[]
+}
+
+model TransactionItem {
+  id            String      @id @default(cuid())
+  transactionId String
+  productId     String
+  quantity      Float
+  price         Float
+  buyPrice      Float?
+  product       Product     @relation(fields: [productId], references: [id])
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
