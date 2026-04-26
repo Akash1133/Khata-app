@@ -39,11 +39,16 @@ export async function POST(request) {
 
     // Generate a 6 digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const finalOtp = (client && twilioNumber && twilioNumber !== 'your_twilio_phone_number') ? otp : '123456';
     
-    // Store it
-    global.otpStore.set(phoneNumber, { otp, expires: Date.now() + 5 * 60 * 1000 });
+    // Store it in the database with 5 min expiry
+    await prisma.otpRecord.upsert({
+      where: { phone: phoneNumber },
+      update: { otp: finalOtp, expiresAt: new Date(Date.now() + 5 * 60 * 1000) },
+      create: { phone: phoneNumber, otp: finalOtp, expiresAt: new Date(Date.now() + 5 * 60 * 1000) }
+    });
 
-    // Send via Twilio if configured, else just simulate it
+    // Send via Twilio if configured
     if (client && twilioNumber && twilioNumber !== 'your_twilio_phone_number') {
       await client.messages.create({
         body: `Your Khata App OTP is: ${otp}`,
@@ -52,9 +57,7 @@ export async function POST(request) {
       });
       console.log(`Sent OTP ${otp} to ${phoneNumber} via Twilio`);
     } else {
-      console.log(`[SIMULATED] Sent OTP ${otp} to ${phoneNumber}`);
-      // In simulated mode, we'll override the OTP to '123456' for easier testing
-      global.otpStore.set(phoneNumber, { otp: '123456', expires: Date.now() + 5 * 60 * 1000 });
+      console.log(`[SIMULATED] Sent OTP ${finalOtp} to ${phoneNumber}`);
     }
 
     return NextResponse.json({ success: true, message: 'OTP sent successfully' });

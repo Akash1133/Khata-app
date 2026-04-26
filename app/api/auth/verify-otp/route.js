@@ -30,14 +30,16 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Phone number and OTP are required' }, { status: 400 });
     }
 
-    const record = global.otpStore?.get(phoneNumber);
+    const record = await prisma.otpRecord.findUnique({
+      where: { phone: phoneNumber }
+    });
     
-    if (!record || record.otp !== otp || record.expires < Date.now()) {
+    if (!record || record.otp !== otp || record.expiresAt < new Date()) {
       return NextResponse.json({ error: 'Invalid or expired OTP' }, { status: 400 });
     }
 
     // OTP matched, clear it
-    global.otpStore.delete(phoneNumber);
+    await prisma.otpRecord.delete({ where: { phone: phoneNumber } });
 
     // Find or create user in DB
     let user = await prisma.user.findUnique({

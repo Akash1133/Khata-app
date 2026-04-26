@@ -18,6 +18,12 @@ model User {
   transactions Transaction[]
 }
 
+model OtpRecord {
+  phone     String   @id
+  otp       String
+  expiresAt DateTime
+}
+
 model Product {
   id                String            @id @default(cuid())
   name              String
