@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { prisma } from '../../../lib/prisma';
 import twilio from 'twilio';
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
