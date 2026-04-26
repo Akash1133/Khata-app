@@ -44,6 +44,16 @@ export async function GET() {
     const userId = await getUserId();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    // Verify user exists in this database
+    const userExists = await prisma.user.findUnique({ where: { id: userId } });
+    if (!userExists) {
+      return NextResponse.json({ 
+        error: 'User session invalid', 
+        details: 'Your user ID was not found in the cloud database. Please log out and log in again to sync your account.',
+        receivedId: userId
+      }, { status: 401 });
+    }
+
     const products = await prisma.product.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' }
@@ -59,6 +69,16 @@ export async function POST(request) {
   try {
     const userId = await getUserId();
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Verify user exists in this database
+    const userExists = await prisma.user.findUnique({ where: { id: userId } });
+    if (!userExists) {
+      return NextResponse.json({ 
+        error: 'User session invalid', 
+        details: 'Your user ID was not found in the cloud database. Please log out and log in again to sync your account.',
+        receivedId: userId
+      }, { status: 401 });
+    }
 
     const data = await request.json();
     
