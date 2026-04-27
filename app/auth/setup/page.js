@@ -22,8 +22,14 @@ export default function SetupPage() {
     if (Object.keys(newErrors).length) { setErrors(newErrors); return; }
 
     setLoading(true);
-    const phone = AuthService.getPendingPhone() || '';
-    UserStore.save({ name: name.trim(), phone, email: email.trim(), businessName: businessName.trim() });
+    // IMPORTANT: Merge with existing user data to preserve the server-assigned ID
+    const existingUser = UserStore.get() || {};
+    UserStore.save({ 
+      ...existingUser,
+      name: name.trim(), 
+      email: email.trim(), 
+      businessName: businessName.trim() 
+    });
 
     // Brief success animation delay
     await new Promise((r) => setTimeout(r, 600));

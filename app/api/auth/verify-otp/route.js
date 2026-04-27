@@ -68,9 +68,13 @@ export async function POST(request) {
           name: 'New User'
         }
       });
+    }
+
+    console.log(`DEBUG: Final user object to return for ${phoneNumber}:`, JSON.stringify(user, null, 2));
+    
     if (!user || !user.id) {
-      console.error(`FAILED to find or create user for ${phoneNumber}`);
-      return NextResponse.json({ error: 'Database error: User could not be created. Please try again.' }, { status: 500 });
+      console.error(`CRITICAL ERROR: user.id is missing for ${phoneNumber}!`);
+      return NextResponse.json({ error: 'Database synchronization error. Please try logging in again.' }, { status: 500 });
     }
 
     console.log(`Login successful for ${phoneNumber}. Returning User ID: ${user.id}`);

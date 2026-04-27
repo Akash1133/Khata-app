@@ -4,6 +4,16 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TransactionStore } from '../lib/store';
 
+// Helper to get auth headers for API calls
+function getAuthHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  try {
+    const user = JSON.parse(localStorage.getItem('khata_user'));
+    if (user?.id) headers['x-user-id'] = user.id;
+  } catch {}
+  return headers;
+}
+
 export default function HistoryPage() {
   const router = useRouter();
   const [transactions, setTransactions] = useState([]);
@@ -51,7 +61,7 @@ export default function HistoryPage() {
     try {
       const res = await fetch(`/api/transactions/${selectedTxn.id}/return`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ returnAll: true })
       });
       if (res.ok) {
@@ -77,7 +87,7 @@ export default function HistoryPage() {
     try {
       const res = await fetch(`/api/transactions/${selectedTxn.id}/return`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           items: itemIds.map(id => ({ transactionItemId: id, quantity: selectedItems[id] }))
         })
