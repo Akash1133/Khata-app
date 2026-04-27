@@ -70,6 +70,7 @@ export async function POST(request) {
       });
     }
 
+    console.log(`Login successful for ${phoneNumber}. Returning User ID: ${user.id}`);
     return NextResponse.json({ success: true, user });
   } catch (error) {
     console.error('Verify OTP error:', error);

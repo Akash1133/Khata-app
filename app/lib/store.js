@@ -57,6 +57,7 @@ export const UserStore = {
       businessName: userData.businessName || '',
       createdAt: userData.createdAt || new Date().toISOString(),
     };
+    console.log('Saving user to localStorage:', user.id);
     safeSet(KEYS.USER, user);
     return user;
   },

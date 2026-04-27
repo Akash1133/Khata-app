@@ -7,14 +7,14 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  phone        String   @unique
+  id           String        @id @default(cuid())
+  phone        String        @unique
   name         String?
   email        String?
   businessName String?
-  createdAt    DateTime @default(now())
-  products     Product[]
+  createdAt    DateTime      @default(now())
   parties      Party[]
+  products     Product[]
   transactions Transaction[]
 }
 
@@ -61,9 +61,9 @@ model Transaction {
   date      DateTime          @default(now())
   createdAt DateTime          @default(now())
   userId    String?
-  user      User?             @relation(fields: [userId], references: [id])
   partyId   String?
   party     Party?            @relation(fields: [partyId], references: [id])
+  user      User?             @relation(fields: [userId], references: [id])
   items     TransactionItem[]
 }
 
