@@ -68,6 +68,9 @@ export async function POST(request) {
           name: 'New User'
         }
       });
+    if (!user || !user.id) {
+      console.error(`FAILED to find or create user for ${phoneNumber}`);
+      return NextResponse.json({ error: 'Database error: User could not be created. Please try again.' }, { status: 500 });
     }
 
     console.log(`Login successful for ${phoneNumber}. Returning User ID: ${user.id}`);
