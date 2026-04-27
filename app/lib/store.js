@@ -49,15 +49,18 @@ export const UserStore = {
   },
 
   save(userData) {
+    if (!userData.id) {
+      console.error('CRITICAL: Attempted to save user without a server ID!', userData);
+    }
     const user = {
-      id: userData.id || generateId(),
-      name: userData.name,
+      id: userData.id, // STICK TO SERVER ID
+      name: userData.name || 'New User',
       phone: userData.phone,
       email: userData.email || '',
       businessName: userData.businessName || '',
       createdAt: userData.createdAt || new Date().toISOString(),
     };
-    console.log('Saving user to localStorage:', user.id);
+    console.log('SYNC SUCCESS: Saving Server ID to localStorage:', user.id);
     safeSet(KEYS.USER, user);
     return user;
   },
