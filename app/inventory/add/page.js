@@ -46,10 +46,20 @@ export default function AddProductPage() {
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     setLoading(true);
-    await ProductStore.add(form);
-    setSuccess(true);
-    await new Promise((r) => setTimeout(r, 800));
-    router.push('/inventory');
+    try {
+      const result = await ProductStore.add(form);
+      if (result.error) {
+        setErrors({ submit: result.error });
+      } else {
+        setSuccess(true);
+        await new Promise((r) => setTimeout(r, 800));
+        router.push('/inventory');
+      }
+    } catch (err) {
+      setErrors({ submit: 'Failed to add product. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const profit = (Number(form.sellPrice) || 0) - (Number(form.buyPrice) || 0);
@@ -143,6 +153,8 @@ export default function AddProductPage() {
 
           <Input id="prod-threshold" label="Low Stock Alert (qty)" type="number" inputMode="numeric" placeholder="5" value={form.lowStockThreshold} onChange={(e) => update('lowStockThreshold', e.target.value)} />
 
+          {errors.submit && <div className="error-alert">{errors.submit}</div>}
+
           <Button id="save-product-btn" type="submit" fullWidth size="lg" loading={loading}>
             Save Product
           </Button>
@@ -150,6 +162,12 @@ export default function AddProductPage() {
       </div>
 
       <style jsx>{`
+        .error-alert {
+          padding: 12px; background: rgba(239,68,68,0.1);
+          border: 1px solid rgba(239,68,68,0.2);
+          border-radius: 12px; color: #EF4444;
+          font-size: 14px; text-align: center; margin-bottom: 8px;
+        }
         .add-page { min-height: 100dvh; background: var(--bg-primary); padding-bottom: 32px; }
         .add-content { max-width: 480px; margin: 0 auto; padding: 16px; }
         .add-header {

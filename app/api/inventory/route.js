@@ -42,6 +42,7 @@ import { getUserId } from '../../lib/serverAuth';
 export async function GET() {
   try {
     const userId = await getUserId();
+    console.log(`Inventory API received userId: ${userId}`);
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     // Verify user exists in this database
@@ -68,6 +69,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const userId = await getUserId();
+    console.log(`Inventory POST received userId: ${userId}`);
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     // Verify user exists in this database
