@@ -24,6 +24,7 @@ export default function SalePage() {
   const [paymentStatus, setPaymentStatus] = useState('full_paid'); // full_paid, partial, full_udhaar
   const [amountPaid, setAmountPaid] = useState('');
   const [note, setNote] = useState('');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     Promise.all([ProductStore.getAll(), PartyStore.getAll()]).then(([prods, parts]) => {
@@ -37,25 +38,41 @@ export default function SalePage() {
   const handleProductSelect = (productId) => {
     if (!productId) return;
     const prod = products.find(p => p.id === productId);
-    if (!prod) return;
+    if (!prod || prod.quantity <= 0) return;
 
-    // If already in the list, increment quantity
     const existingIndex = cart.findIndex(c => c.product.id === prod.id);
     if (existingIndex >= 0) {
       const newCart = [...cart];
-      newCart[existingIndex].quantity += 1;
-      setCart(newCart);
+      const maxStock = newCart[existingIndex].product.quantity;
+      if (newCart[existingIndex].quantity < maxStock) {
+        newCart[existingIndex].quantity += 1;
+        setCart(newCart);
+      }
     } else {
-      setCart([...cart, { product: prod, quantity: 1, price: prod.sellPrice }]);
+      setCart([...cart, { product: prod, quantity: 1, price: prod.sellPrice, customTotal: null }]);
     }
     setError(null);
   };
 
   const updateQuantity = (index, newQty) => {
-    const qty = parseInt(newQty, 10);
+    const qty = Number(newQty);
     if (isNaN(qty) || qty <= 0) return;
+    const maxStock = cart[index].product.quantity;
+    const clampedQty = Math.min(qty, maxStock);
     const newCart = [...cart];
-    newCart[index].quantity = qty;
+    newCart[index].quantity = clampedQty;
+    newCart[index].customTotal = null;
+    setCart(newCart);
+  };
+
+  const updateTotalPrice = (index, newTotal) => {
+    const total = Number(newTotal);
+    if (isNaN(total) || total < 0) return;
+    const newCart = [...cart];
+    newCart[index].customTotal = total;
+    if (newCart[index].quantity > 0) {
+      newCart[index].price = Math.round((total / newCart[index].quantity) * 100) / 100;
+    }
     setCart(newCart);
   };
 
@@ -63,7 +80,13 @@ export default function SalePage() {
     setCart(cart.filter((_, i) => i !== index));
   };
 
-  const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const getLineTotal = (item) => item.customTotal != null ? item.customTotal : item.price * item.quantity;
+  const totalAmount = cart.reduce((sum, item) => sum + getLineTotal(item), 0);
+
+  // Search filter
+  const filteredProducts = search.trim()
+    ? products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+    : products;
   const totalItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleCompleteSale = async () => {
@@ -204,21 +227,32 @@ export default function SalePage() {
         {/* Product Selector - tap to add */}
         <div className="card">
           <h2>Tap a product to add</h2>
+          <input
+            type="text"
+            className="search-input"
+            placeholder="🔍 Search products..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
           <div className="product-grid">
-            {products.map(p => {
+            {filteredProducts.map(p => {
               const inCart = cart.find(c => c.product.id === p.id);
+              const outOfStock = p.quantity <= 0;
               return (
                 <button 
                   key={p.id} 
-                  className={`product-chip ${inCart ? 'in-cart' : ''}`}
+                  className={`product-chip ${inCart ? 'in-cart' : ''} ${outOfStock ? 'out-of-stock' : ''}`}
                   onClick={() => handleProductSelect(p.id)}
+                  disabled={outOfStock}
                 >
                   <span className="chip-name">{p.name}</span>
                   <span className="chip-price">₹{p.sellPrice}</span>
+                  <span className="chip-stock">{p.quantity} {p.unit}</span>
                   {inCart && <span className="chip-badge">{inCart.quantity}</span>}
                 </button>
               );
             })}
+            {filteredProducts.length === 0 && <p className="no-results">No products found</p>}
           </div>
         </div>
 
@@ -227,29 +261,56 @@ export default function SalePage() {
           <div className="card">
             <h2>Items Sold</h2>
             <div className="cart-list">
-              {cart.map((item, index) => (
-                <div key={index} className="cart-item">
-                  <div className="cart-item-info">
-                    <p className="item-name">{item.product.name}</p>
-                    <p className="item-price">₹{item.price} per {item.product.unit}</p>
+              {cart.map((item, index) => {
+                const isCustomPrice = item.price !== item.product.sellPrice;
+                const maxStock = item.product.quantity;
+                const lineTotal = getLineTotal(item);
+                return (
+                  <div key={index} className="cart-item">
+                    <div className="cart-item-row1">
+                      <div className="cart-item-info">
+                        <p className="item-name">{item.product.name}</p>
+                        <p className="item-stock">{maxStock} {item.product.unit} in stock</p>
+                      </div>
+                      <button className="remove-btn" onClick={() => removeFromCart(index)}>✕</button>
+                    </div>
+                    <div className="cart-item-row2">
+                      <div className="qty-section">
+                        <span className="field-label">Qty</span>
+                        <div className="cart-item-controls">
+                          <button className="qty-btn" onClick={() => updateQuantity(index, item.quantity - 1)}>−</button>
+                          <input
+                            type="number"
+                            step="any"
+                            className="qty-input"
+                            value={item.quantity}
+                            onChange={(e) => updateQuantity(index, e.target.value)}
+                            min="1"
+                            max={maxStock}
+                          />
+                          <button
+                            className="qty-btn"
+                            disabled={item.quantity >= maxStock}
+                            onClick={() => updateQuantity(index, item.quantity + 1)}
+                          >+</button>
+                        </div>
+                      </div>
+                      <div className="total-section">
+                        <span className="field-label">
+                          Total {isCustomPrice && <span className="orig-price">was ₹{item.product.sellPrice * item.quantity}</span>}
+                        </span>
+                        <input
+                          type="number"
+                          step="any"
+                          className="price-input total-input"
+                          value={lineTotal}
+                          onChange={(e) => updateTotalPrice(index, e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="cart-item-controls">
-                    <button className="qty-btn" onClick={() => updateQuantity(index, item.quantity - 1)}>−</button>
-                    <input 
-                      type="number" 
-                      step="any"
-                      className="qty-input" 
-                      value={item.quantity} 
-                      onChange={(e) => updateQuantity(index, e.target.value)}
-                    />
-                    <button className="qty-btn" onClick={() => updateQuantity(index, item.quantity + 1)}>+</button>
-                  </div>
-                  <div className="cart-item-total">
-                    <p className="item-total">₹{item.quantity * item.price}</p>
-                    <button className="remove-btn" onClick={() => removeFromCart(index)}>✕</button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             <div className="cart-total">
               <div className="total-label">
@@ -383,8 +444,10 @@ export default function SalePage() {
         }
         .product-chip:active { transform: scale(0.95); }
         .product-chip.in-cart { border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.08); }
+        .product-chip.out-of-stock { opacity: 0.4; cursor: not-allowed; }
         .chip-name { font-size: 13px; font-weight: 600; text-align: center; }
         .chip-price { font-size: 11px; color: #A0A0B8; }
+        .chip-stock { font-size: 10px; color: #6B6B80; }
         .chip-badge {
           position: absolute; top: -6px; right: -6px;
           width: 22px; height: 22px; border-radius: 50%;
@@ -392,6 +455,14 @@ export default function SalePage() {
           font-size: 11px; font-weight: 700;
           display: flex; align-items: center; justify-content: center;
         }
+        .search-input {
+          width: 100%; padding: 10px 14px; margin-bottom: 12px;
+          background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 10px; color: white; font-size: 14px; outline: none;
+        }
+        .search-input:focus { border-color: #7B42C4; }
+        .search-input::placeholder { color: #6B6B80; }
+        .no-results { color: #6B6B80; font-size: 13px; text-align: center; padding: 16px; width: 100%; }
         
         .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
         .input-group label { font-size: 13px; color: #A0A0B8; }
@@ -410,28 +481,43 @@ export default function SalePage() {
         .udhaar-hint { font-size: 12px; color: #EF4444; margin-top: 6px; font-weight: 600; }
         
         .cart-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
-        .cart-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .cart-item { padding: 12px; background: rgba(0,0,0,0.2); border-radius: 12px; }
+        .cart-item-row1 { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
         .cart-item-info { flex: 1; min-width: 0; }
         .item-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .item-price { font-size: 11px; color: #6B6B80; }
-        .cart-item-controls { display: flex; align-items: center; gap: 4px; }
+        .item-stock { font-size: 11px; color: #6B6B80; }
+        .cart-item-row2 { display: flex; gap: 10px; align-items: flex-end; }
+        .qty-section { flex: 1; }
+        .total-section { flex: 1; }
+        .field-label { display: block; font-size: 10px; color: #6B6B80; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .orig-price { text-decoration: line-through; color: #EF4444; font-size: 10px; margin-left: 4px; }
+        .cart-item-controls { display: flex; align-items: center; gap: 2px; }
         .qty-btn {
-          width: 28px; height: 28px; border-radius: 8px;
+          width: 28px; height: 32px; border-radius: 8px;
           background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
           color: white; font-size: 16px; cursor: pointer;
           display: flex; align-items: center; justify-content: center;
-          transition: background 0.15s;
+          transition: background 0.15s; flex-shrink: 0;
         }
         .qty-btn:active { background: rgba(255,255,255,0.15); }
+        .qty-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         .qty-input {
-          width: 36px; height: 28px; text-align: center; font-size: 14px; font-weight: 700;
-          background: transparent; border: none; color: white; outline: none;
+          width: 40px; height: 32px; text-align: center; font-size: 14px; font-weight: 700;
+          background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+          color: white; outline: none;
         }
+        .qty-input:focus { border-color: #7B42C4; }
         .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
-        .cart-item-total { text-align: right; min-width: 60px; }
-        .item-total { font-weight: 700; font-size: 14px; color: #22C55E; margin-bottom: 4px; }
-        .remove-btn { background: none; color: #6B6B80; border: none; cursor: pointer; font-size: 12px; transition: color 0.15s; }
-        .remove-btn:hover { color: #EF4444; }
+        .price-input {
+          width: 100%; height: 32px; text-align: center; font-size: 14px; font-weight: 700;
+          background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+          color: white; outline: none;
+        }
+        .price-input:focus { border-color: #7B42C4; }
+        .price-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+        .total-input { color: #22C55E; }
+        .remove-btn { background: rgba(239,68,68,0.1); color: #EF4444; border: none; cursor: pointer; font-size: 12px; width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+        .remove-btn:hover { background: rgba(239,68,68,0.2); }
         
         .cart-total { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px dashed rgba(255,255,255,0.1); }
         .total-label p { font-size: 12px; color: #A0A0B8; margin-bottom: 4px; }

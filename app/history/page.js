@@ -114,7 +114,23 @@ export default function HistoryPage() {
     setSelectedItems({});
   };
 
-  const filtered = filter === 'all' ? transactions : transactions.filter((t) => t.type === filter);
+  // Detect auto-generated payment_in notes to hide them
+  const isAutoPayment = (t) => t.type === 'payment_in' && t.note && t.note.startsWith('Payment received during Sale');
+
+  // Find linked payment for a sale transaction
+  const getLinkedPayment = (saleTxn) => {
+    if (saleTxn.type !== 'sale' || !saleTxn.partyId) return null;
+    const saleIdSuffix = saleTxn.id.slice(-6);
+    return transactions.find(t =>
+      t.type === 'payment_in' &&
+      t.partyId === saleTxn.partyId &&
+      t.note && t.note.includes(saleIdSuffix)
+    );
+  };
+
+  // Filter: hide auto-generated payment_in entries
+  const visibleTransactions = (filter === 'all' ? transactions : transactions.filter((t) => t.type === filter))
+    .filter(t => !isAutoPayment(t));
 
   const filters = [
     { key: 'all', label: 'All' },
@@ -153,7 +169,7 @@ export default function HistoryPage() {
           ))}
         </div>
 
-        {filtered.length === 0 ? (
+        {visibleTransactions.length === 0 ? (
           <div className="empty">
             <p className="empty-icon">📜</p>
             <p className="empty-title">No transactions yet</p>
@@ -161,26 +177,35 @@ export default function HistoryPage() {
           </div>
         ) : (
           <div className="txn-list">
-            {filtered.map((t) => (
-              <button key={t.id} className="txn-card" onClick={() => setSelectedTxn(t)}>
-                <div className="txn-left">
-                  <span className="txn-emoji">{getTypeIcon(t.type)}</span>
-                  <div className="txn-text">
-                    <p className="txn-name">{t.party?.name || t.note || t.type}</p>
-                    <p className="txn-date">{new Date(t.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                    {t.items && t.items.length > 0 && (
-                      <p className="txn-item-count">{t.items.length} item{t.items.length > 1 ? 's' : ''}</p>
-                    )}
+            {visibleTransactions.map((t) => {
+              const linkedPay = getLinkedPayment(t);
+              const isPartial = linkedPay && linkedPay.amount < t.amount;
+              const khataAmt = isPartial ? t.amount - linkedPay.amount : 0;
+              return (
+                <button key={t.id} className="txn-card" onClick={() => setSelectedTxn(t)}>
+                  <div className="txn-left">
+                    <span className="txn-emoji">{getTypeIcon(t.type)}</span>
+                    <div className="txn-text">
+                      <p className="txn-name">{t.party?.name || t.note || t.type}</p>
+                      <p className="txn-date">{new Date(t.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                      {t.items && t.items.length > 0 && (
+                        <p className="txn-item-count">{t.items.length} item{t.items.length > 1 ? 's' : ''}</p>
+                      )}
+                      {isPartial && (
+                        <p className="txn-khata-info">₹{linkedPay.amount} paid · ₹{khataAmt} in Khata</p>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="txn-right">
-                  <p className="txn-amt" style={{ color: getTypeColor(t.type) }}>
-                    {t.type === 'sale' || t.type === 'payment_in' ? '+' : t.type === 'return' ? '↩' : '-'}₹{t.amount}
-                  </p>
-                  <svg className="txn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4A4A60" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-                </div>
-              </button>
-            ))}
+                  <div className="txn-right">
+                    <p className="txn-amt" style={{ color: getTypeColor(t.type) }}>
+                      {t.type === 'sale' || t.type === 'payment_in' ? '+' : t.type === 'return' ? '↩' : '-'}₹{t.amount}
+                    </p>
+                    {isPartial && <span className="khata-badge">📒</span>}
+                    <svg className="txn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4A4A60" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -326,7 +351,9 @@ export default function HistoryPage() {
         .txn-name { font-size:14px; font-weight:600; color:white; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .txn-date { font-size:11px; color:#4A4A60; margin-top:2px; }
         .txn-item-count { font-size:11px; color:#6B6B80; margin-top:2px; }
-        .txn-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+        .txn-khata-info { font-size:11px; color:#F59E0B; margin-top:2px; font-weight:600; }
+        .khata-badge { font-size:14px; margin-right:2px; }
+        .txn-right { display:flex; align-items:center; gap:6px; flex-shrink:0; }
         .txn-amt { font-size:16px; font-weight:700; }
         .txn-arrow { flex-shrink:0; }
 
