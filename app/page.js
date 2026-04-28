@@ -27,8 +27,8 @@ export default function SplashPage() {
     return (
       <div className="splash-screen">
         <div className="splash-logo-container">
-          <div className="splash-icon">📒</div>
-          <h1 className="splash-title">Profitly</h1>
+          <img src="/branding/logo-light.png" alt="Profitly" className="theme-logo light-logo" style={{ maxWidth: '240px', animation: 'bounceIn 0.8s ease-out' }} />
+          <img src="/branding/logo-dark.png" alt="Profitly" className="theme-logo dark-logo" style={{ maxWidth: '240px', animation: 'bounceIn 0.8s ease-out' }} />
           <div className="splash-loader">
             <div className="splash-loader-bar" />
           </div>
@@ -99,8 +99,10 @@ export default function SplashPage() {
       <div className={`welcome-content ${show ? 'welcome-visible' : ''}`}>
         <div className="welcome-hero">
           <div className="welcome-glow" />
-          <div className="welcome-icon">📒</div>
-          <h1 className="welcome-title">Profitly</h1>
+          <div style={{ position: 'relative', zIndex: 1, margin: '0 auto 12px' }}>
+            <img src="/branding/logo-light.png" alt="Profitly" className="theme-logo light-logo" style={{ maxWidth: '280px', margin: '0 auto' }} />
+            <img src="/branding/logo-dark.png" alt="Profitly" className="theme-logo dark-logo" style={{ maxWidth: '280px', margin: '0 auto' }} />
+          </div>
           <p className="welcome-subtitle">Smart Business Ledger</p>
         </div>
 

@@ -468,3 +468,19 @@ img {
     padding-top: var(--safe-top);
   }
 }
+
+/* ========== THEME LOGOS ========== */
+.theme-logo {
+  max-width: 100%;
+  height: auto;
+  display: none;
+}
+
+[data-theme='light'] .light-logo { display: block; }
+[data-theme='dark'] .dark-logo { display: block; }
+
+html[data-theme='system'] .dark-logo { display: block; }
+@media (prefers-color-scheme: light) {
+  html[data-theme='system'] .dark-logo { display: none; }
+  html[data-theme='system'] .light-logo { display: block; }
+}

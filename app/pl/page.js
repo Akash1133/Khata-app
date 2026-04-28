@@ -34,6 +34,7 @@ export default function ProfitLossPage() {
   // Other cash-flow metrics
   let totalPurchases = 0;
   let totalExpenses = 0;
+  const money = (n) => (Number(n) || 0).toFixed(2);
 
   transactions.forEach(t => {
     if (t.type === 'sale') {
@@ -104,7 +105,7 @@ export default function ProfitLossPage() {
         <div className="report-card primary-card">
           <p className="card-label">Gross Profit (Margin-Based)</p>
           <h2 className={`card-value ${grossProfit >= 0 ? 'green' : 'red'}`}>
-            {grossProfit >= 0 ? '+' : '-'}₹{Math.abs(grossProfit)}
+            {grossProfit >= 0 ? '+' : '-'}₹{money(Math.abs(grossProfit))}
           </h2>
           <p className="card-sub">Calculated as (Sell Price - Buy Price) × Qty Sold</p>
         </div>
@@ -113,17 +114,17 @@ export default function ProfitLossPage() {
           <div className="breakdown-card">
             <div className="bd-icon green-bg">💰</div>
             <p className="bd-label">Sales Revenue</p>
-            <p className="bd-value">₹{totalSalesRevenue}</p>
+            <p className="bd-value">₹{money(totalSalesRevenue)}</p>
           </div>
           <div className="breakdown-card">
             <div className="bd-icon red-bg">📉</div>
             <p className="bd-label">Cost of Goods Sold</p>
-            <p className="bd-value">₹{totalCOGS}</p>
+            <p className="bd-value">₹{money(totalCOGS)}</p>
           </div>
           <div className="breakdown-card">
             <div className="bd-icon blue-bg">📦</div>
             <p className="bd-label">Total Purchases</p>
-            <p className="bd-value">₹{totalPurchases}</p>
+            <p className="bd-value">₹{money(totalPurchases)}</p>
           </div>
         </div>
 
@@ -132,15 +133,15 @@ export default function ProfitLossPage() {
           <div className="list-card">
             <div className="list-row">
               <span>Total Revenue from Sales</span>
-              <span>₹{totalSalesRevenue}</span>
+              <span>₹{money(totalSalesRevenue)}</span>
             </div>
             <div className="list-row">
               <span>Less: Cost of Goods Sold (COGS)</span>
-              <span className="red">- ₹{totalCOGS}</span>
+              <span className="red">- ₹{money(totalCOGS)}</span>
             </div>
             <div className="list-row total-row">
               <span>Gross Profit</span>
-              <span className={grossProfit >= 0 ? 'green' : 'red'}>₹{grossProfit}</span>
+              <span className={grossProfit >= 0 ? 'green' : 'red'}>₹{money(grossProfit)}</span>
             </div>
           </div>
         </div>
