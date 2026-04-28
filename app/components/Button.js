@@ -80,7 +80,7 @@ export default function Button({
         /* Variants */
         .btn-primary {
           background: linear-gradient(135deg, #7B42C4, #5B2D8E);
-          color: white;
+          color: var(--text-primary);
           box-shadow: 0 4px 16px rgba(123, 66, 196, 0.3);
         }
 
@@ -101,19 +101,19 @@ export default function Button({
 
         .btn-outline {
           background: transparent;
-          color: #A0A0B8;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: var(--text-secondary);
+          border: 1px solid var(--border-color);
         }
 
         .btn-outline:hover:not(:disabled) {
-          background: rgba(255, 255, 255, 0.05);
-          border-color: rgba(255, 255, 255, 0.2);
-          color: white;
+          background: var(--bg-card-hover);
+          border-color: var(--border-color);
+          color: var(--text-primary);
         }
 
         .btn-danger {
           background: rgba(239, 68, 68, 0.15);
-          color: #EF4444;
+          color: var(--color-danger);
           border: 1px solid rgba(239, 68, 68, 0.2);
         }
 
@@ -123,12 +123,12 @@ export default function Button({
 
         .btn-ghost {
           background: transparent;
-          color: #A0A0B8;
+          color: var(--text-secondary);
         }
 
         .btn-ghost:hover:not(:disabled) {
-          background: rgba(255, 255, 255, 0.05);
-          color: white;
+          background: var(--bg-card-hover);
+          color: var(--text-primary);
         }
 
         /* Icon */
@@ -142,7 +142,7 @@ export default function Button({
           width: 20px;
           height: 20px;
           border: 2px solid rgba(255, 255, 255, 0.3);
-          border-top-color: white;
+          border-top-color: var(--text-primary);
           border-radius: 50%;
           animation: spin 0.6s linear infinite;
         }

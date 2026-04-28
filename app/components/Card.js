@@ -23,8 +23,8 @@ export default function Card({
 
       <style jsx>{`
         .card {
-          background: #252540;
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          background: var(--bg-card);
+          border: 1px solid var(--border-color);
           border-radius: 16px;
           transition: all 0.25s ease;
         }
@@ -38,8 +38,8 @@ export default function Card({
         }
 
         .card-clickable:hover {
-          background: #2D2D4A;
-          border-color: rgba(255, 255, 255, 0.1);
+          background: var(--bg-card-hover);
+          border-color: var(--border-color);
           transform: translateY(-1px);
         }
 
@@ -53,7 +53,7 @@ export default function Card({
         }
 
         .card-glow {
-          background: #252540;
+          background: var(--bg-card);
           box-shadow: 0 0 30px rgba(123, 66, 196, 0.15);
           border-color: rgba(123, 66, 196, 0.3);
         }

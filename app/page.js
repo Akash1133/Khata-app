@@ -28,7 +28,7 @@ export default function SplashPage() {
       <div className="splash-screen">
         <div className="splash-logo-container">
           <div className="splash-icon">📒</div>
-          <h1 className="splash-title">Khata</h1>
+          <h1 className="splash-title">Profitly</h1>
           <div className="splash-loader">
             <div className="splash-loader-bar" />
           </div>
@@ -39,7 +39,7 @@ export default function SplashPage() {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(180deg, #0D0D1A 0%, #1C1C2E 50%, #0D0D1A 100%);
+            background: var(--bg-primary);
           }
           .splash-logo-container {
             display: flex;
@@ -100,7 +100,7 @@ export default function SplashPage() {
         <div className="welcome-hero">
           <div className="welcome-glow" />
           <div className="welcome-icon">📒</div>
-          <h1 className="welcome-title">Khata</h1>
+          <h1 className="welcome-title">Profitly</h1>
           <p className="welcome-subtitle">Smart Business Ledger</p>
         </div>
 
@@ -129,14 +129,22 @@ export default function SplashPage() {
         </div>
 
         <div className="welcome-cta">
-          <Button
-            id="get-started-btn"
-            fullWidth
-            size="lg"
-            onClick={() => router.push('/auth/phone')}
-          >
-            Get Started
-          </Button>
+          <div className="cta-buttons">
+            <Button
+              id="get-started-btn"
+              fullWidth
+              size="lg"
+              onClick={() => router.push('/auth/phone')}
+            >
+              Get Started
+            </Button>
+            <button 
+              className="login-link-btn"
+              onClick={() => router.push('/auth/phone')}
+            >
+              Already have an account? <span>Login</span>
+            </button>
+          </div>
           <p className="welcome-terms">By continuing, you agree to our Terms of Service</p>
         </div>
       </div>
@@ -144,7 +152,7 @@ export default function SplashPage() {
       <style jsx>{`
         .welcome-screen {
           min-height: 100dvh;
-          background: linear-gradient(180deg, #0D0D1A 0%, #1C1C2E 100%);
+          background: var(--bg-primary);
           display: flex;
           flex-direction: column;
           padding: 0 24px;
@@ -191,7 +199,7 @@ export default function SplashPage() {
           font-family: var(--font-display);
           font-size: 42px;
           font-weight: 800;
-          background: linear-gradient(135deg, #FFFFFF, #B68AFF);
+          background: linear-gradient(135deg, var(--text-primary), var(--text-accent));
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
@@ -200,7 +208,7 @@ export default function SplashPage() {
         }
         .welcome-subtitle {
           font-size: 16px;
-          color: #A0A0B8;
+          color: var(--text-secondary);
           margin-top: 4px;
         }
         .welcome-features {
@@ -214,8 +222,8 @@ export default function SplashPage() {
           align-items: center;
           gap: 16px;
           padding: 14px 16px;
-          background: rgba(37, 37, 64, 0.5);
-          border: 1px solid rgba(255,255,255,0.06);
+          background: var(--bg-surface);
+          border: 1px solid var(--border-color);
           border-radius: 14px;
           animation: fadeInUp 0.5s ease-out both;
         }
@@ -226,20 +234,47 @@ export default function SplashPage() {
         .feature-title {
           font-size: 15px;
           font-weight: 600;
-          color: white;
+          color: var(--text-primary);
         }
         .feature-desc {
           font-size: 13px;
-          color: #6B6B80;
+          color: var(--text-muted);
           margin-top: 2px;
         }
         .welcome-cta {
           padding-bottom: 32px;
         }
+        .cta-buttons {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+        .login-link-btn {
+          background: var(--bg-surface);
+          border: 1px solid var(--border-color);
+          color: var(--text-primary);
+          font-size: 16px;
+          font-weight: 600;
+          padding: 16px;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .login-link-btn span {
+          color: #B68AFF;
+          font-weight: 700;
+        }
+        .login-link-btn:hover {
+          background: var(--bg-surface-hover);
+          transform: translateY(-1px);
+        }
+        .login-link-btn:active {
+          transform: translateY(0);
+        }
         .welcome-terms {
           text-align: center;
           font-size: 12px;
-          color: #4A4A60;
+          color: var(--text-muted);
           margin-top: 16px;
         }
         @keyframes fadeInUp {

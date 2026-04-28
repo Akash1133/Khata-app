@@ -7,7 +7,7 @@ export const getApiDocs = async () => {
     definition: {
       openapi: '3.0.0',
       info: {
-        title: 'Khata App API',
+        title: 'Profitly API',
         version: '1.0',
       },
       components: {

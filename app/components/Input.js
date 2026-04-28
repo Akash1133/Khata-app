@@ -20,6 +20,8 @@ export default function Input({
   inputMode,
   pattern,
   step,
+  min,
+  max,
 }) {
   const [focused, setFocused] = useState(false);
 
@@ -48,6 +50,8 @@ export default function Input({
             inputMode={inputMode}
             pattern={pattern}
             step={step}
+            min={min}
+            max={max}
             className="input-field"
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
@@ -68,15 +72,15 @@ export default function Input({
         .input-label {
           font-size: 13px;
           font-weight: 500;
-          color: #A0A0B8;
+          color: var(--text-secondary);
           padding-left: 2px;
         }
 
         .input-wrapper {
           display: flex;
           align-items: center;
-          background: #1A1A30;
-          border: 1.5px solid rgba(255, 255, 255, 0.08);
+          background: var(--bg-input);
+          border: 1.5px solid var(--border-color);
           border-radius: 12px;
           padding: 0 16px;
           transition: all 0.2s ease;
@@ -86,7 +90,7 @@ export default function Input({
         .input-focused .input-wrapper {
           border-color: rgba(123, 66, 196, 0.6);
           box-shadow: 0 0 0 3px rgba(123, 66, 196, 0.15);
-          background: #1E1E36;
+          background: var(--bg-card-hover);
         }
 
         .input-error .input-wrapper {
@@ -97,10 +101,10 @@ export default function Input({
         .input-prefix {
           font-size: 16px;
           font-weight: 600;
-          color: #A0A0B8;
+          color: var(--text-secondary);
           margin-right: 8px;
           padding-right: 8px;
-          border-right: 1px solid rgba(255, 255, 255, 0.08);
+          border-right: 1px solid var(--border-color);
           white-space: nowrap;
         }
 
@@ -108,20 +112,20 @@ export default function Input({
           display: flex;
           align-items: center;
           margin-right: 10px;
-          color: #6B6B80;
+          color: var(--text-muted);
         }
 
         .input-field {
           flex: 1;
           height: 100%;
           font-size: 16px;
-          color: white;
+          color: var(--text-primary);
           background: transparent;
           min-width: 0;
         }
 
         .input-field::placeholder {
-          color: #4A4A60;
+          color: var(--text-muted);
         }
 
         .input-field:disabled {
@@ -130,12 +134,12 @@ export default function Input({
 
         .input-error-msg {
           font-size: 12px;
-          color: #EF4444;
+          color: var(--color-danger);
           padding-left: 2px;
         }
 
         .input-focused .input-label {
-          color: #B68AFF;
+          color: var(--text-accent);
         }
       `}</style>
     </>

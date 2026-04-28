@@ -44,7 +44,7 @@ export default function KhataPage() {
           <button className="back-btn" onClick={() => router.push('/dashboard')}>
              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
           </button>
-          <h1>Khata Ledger</h1>
+          <h1>Profitly Ledger</h1>
           <button className="add-btn" onClick={() => setShowAdd(true)}>+</button>
         </div>
 
@@ -117,50 +117,50 @@ export default function KhataPage() {
       </div>
 
       <style jsx>{`
-        .khata-page { min-height: 100dvh; background: var(--bg-primary); padding-bottom: 88px; color: white; }
+        .khata-page { min-height: 100dvh; background: var(--bg-primary); padding-bottom: 88px; color: var(--text-primary); }
         .khata-content { max-width: 480px; margin: 0 auto; padding: 16px; }
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-top: 8px; }
-        .back-btn, .add-btn { background: rgba(255,255,255,0.05); border: none; width: 40px; height: 40px; border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+        .back-btn, .add-btn { background: rgba(255,255,255,0.05); border: none; width: 40px; height: 40px; border-radius: 12px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; }
         .header h1 { font-size: 24px; font-weight: 700; margin: 0; }
         
         .summary-cards { display: flex; gap: 12px; margin-bottom: 24px; }
-        .sum-card { flex: 1; padding: 16px; border-radius: 16px; background: #252540; border: 1px solid rgba(255,255,255,0.04); }
-        .sum-card.green { border-left: 4px solid #22C55E; }
-        .sum-card.red { border-left: 4px solid #EF4444; }
-        .sum-card p { font-size: 13px; color: #A0A0B8; margin-bottom: 4px; }
+        .sum-card { flex: 1; padding: 16px; border-radius: 16px; background: var(--bg-surface-solid); border: 1px solid rgba(255,255,255,0.04); }
+        .sum-card.green { border-left: 4px solid var(--color-success); }
+        .sum-card.red { border-left: 4px solid var(--color-danger); }
+        .sum-card p { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
         .sum-card h3 { font-size: 22px; font-weight: 800; }
-        .sum-card.green h3 { color: #22C55E; }
-        .sum-card.red h3 { color: #EF4444; }
+        .sum-card.green h3 { color: var(--color-success); }
+        .sum-card.red h3 { color: var(--color-danger); }
 
         .party-list { display: flex; flex-direction: column; gap: 10px; }
-        .party-card { display: flex; align-items: center; gap: 12px; padding: 14px; background: #252540; border-radius: 12px; cursor: pointer; border: 1px solid rgba(255,255,255,0.04); }
+        .party-card { display: flex; align-items: center; gap: 12px; padding: 14px; background: var(--bg-surface-solid); border-radius: 12px; cursor: pointer; border: 1px solid rgba(255,255,255,0.04); }
         .party-avatar { width: 40px; height: 40px; border-radius: 50%; background: #7B42C4; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; }
         .party-info { flex: 1; }
         .party-name { font-size: 15px; font-weight: 600; }
-        .party-type { font-size: 12px; color: #6B6B80; text-transform: capitalize; }
+        .party-type { font-size: 12px; color: var(--text-muted); text-transform: capitalize; }
         .party-bal { text-align: right; }
-        .bal-settled { color: #A0A0B8; font-size: 13px; font-weight: 500; }
-        .bal-get { color: #EF4444; font-size: 15px; font-weight: 700; display: flex; flex-direction: column; }
-        .bal-give { color: #22C55E; font-size: 15px; font-weight: 700; display: flex; flex-direction: column; }
+        .bal-settled { color: var(--text-secondary); font-size: 13px; font-weight: 500; }
+        .bal-get { color: var(--color-danger); font-size: 15px; font-weight: 700; display: flex; flex-direction: column; }
+        .bal-give { color: var(--color-success); font-size: 15px; font-weight: 700; display: flex; flex-direction: column; }
         .party-bal small { font-size: 10px; font-weight: 500; opacity: 0.8; }
 
-        .loading, .empty { text-align: center; padding: 40px; color: #A0A0B8; }
+        .loading, .empty { text-align: center; padding: 40px; color: var(--text-secondary); }
         .empty-icon { font-size: 40px; margin-bottom: 12px; }
 
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; backdrop-filter: blur(4px); }
-        .modal-content { background: #252540; width: 100%; max-width: 400px; border-radius: 20px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); }
+        .modal-content { background: var(--bg-surface-solid); width: 100%; max-width: 400px; border-radius: 20px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); }
         .modal-content h2 { font-size: 20px; margin-bottom: 20px; }
         
         .type-toggle { display: flex; background: rgba(0,0,0,0.2); border-radius: 10px; padding: 4px; margin-bottom: 16px; }
-        .type-toggle button { flex: 1; padding: 10px; border: none; background: transparent; color: #A0A0B8; font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-        .type-toggle button.active { background: #7B42C4; color: white; }
+        .type-toggle button { flex: 1; padding: 10px; border: none; background: transparent; color: var(--text-secondary); font-weight: 600; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .type-toggle button.active { background: #7B42C4; color: var(--text-primary); }
         
         .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 13px; color: #A0A0B8; margin-bottom: 8px; }
+        .form-group label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
         
         .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
         .modal-actions > * { flex: 1; }
-        .cancel-btn { background: rgba(255,255,255,0.05); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; }
+        .cancel-btn { background: rgba(255,255,255,0.05); color: var(--text-primary); border: none; border-radius: 12px; font-weight: 600; cursor: pointer; }
       `}</style>
     </div>
   );

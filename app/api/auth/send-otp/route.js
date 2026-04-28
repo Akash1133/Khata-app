@@ -55,7 +55,7 @@ export async function POST(request) {
     // Send via Twilio if configured
     if (client && twilioNumber && twilioNumber !== 'your_twilio_phone_number') {
       await client.messages.create({
-        body: `Your Khata App OTP is: ${otp}`,
+        body: `Your Profitly OTP is: ${otp}`,
         from: twilioNumber,
         to: phoneNumber
       });

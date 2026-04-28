@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthService } from '../../lib/auth';
+import { UserStore } from '../../lib/store';
 import Button from '../../components/Button';
 import OtpInput from '../../components/OtpInput';
 
@@ -42,10 +43,17 @@ export default function OtpPage() {
     try {
       const result = await AuthService.verifyOtp(otp);
       if (result.success) {
-        import('../../lib/store').then(({ UserStore }) => {
-          UserStore.save(result.user);
-        });
-        router.push('/auth/setup');
+        UserStore.save(result.user);
+        const shouldSetup =
+          result.isNewUser ||
+          !result.user?.name ||
+          result.user?.name === 'New User' ||
+          !result.user?.businessName;
+        if (shouldSetup) {
+          router.push('/auth/setup');
+        } else {
+          router.push('/dashboard');
+        }
       } else {
         setError(result.message);
         setOtp('');
@@ -132,14 +140,14 @@ export default function OtpPage() {
           animation: fadeInUp 0.5s ease-out;
         }
         .auth-icon { font-size: 48px; margin-bottom: 16px; }
-        .auth-title { font-size: 24px; font-weight: 700; color: white; margin-bottom: 8px; }
-        .auth-desc { font-size: 15px; color: #6B6B80; line-height: 1.6; }
+        .auth-title { font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+        .auth-desc { font-size: 15px; color: var(--text-muted); line-height: 1.6; }
         .otp-section {
           display: flex; flex-direction: column; gap: 24px;
           animation: fadeInUp 0.5s ease-out 0.1s both;
         }
         .resend-row { text-align: center; }
-        .resend-timer { font-size: 14px; color: #6B6B80; }
+        .resend-timer { font-size: 14px; color: var(--text-muted); }
         .resend-timer strong { color: #B68AFF; }
         .resend-btn {
           font-size: 14px; font-weight: 600; color: #7B42C4;

@@ -8,9 +8,20 @@ const navItems = [
     label: 'Home',
     href: '/dashboard',
     icon: (active) => (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? '#7B42C4' : '#6B6B80'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
         <polyline points="9 22 9 12 15 12 15 22" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Sale',
+    href: '/sale',
+    icon: (active) => (
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <path d="M16 10a4 4 0 0 1-8 0" />
       </svg>
     ),
   },
@@ -18,7 +29,7 @@ const navItems = [
     label: 'Inventory',
     href: '/inventory',
     icon: (active) => (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? '#7B42C4' : '#6B6B80'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
         <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
         <line x1="12" y1="22.08" x2="12" y2="12" />
@@ -29,7 +40,7 @@ const navItems = [
     label: 'History',
     href: '/history',
     icon: (active) => (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? '#7B42C4' : '#6B6B80'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" />
         <polyline points="12 6 12 12 16 14" />
       </svg>
@@ -39,7 +50,7 @@ const navItems = [
     label: 'Profile',
     href: '/profile',
     icon: (active) => (
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={active ? '#7B42C4' : '#6B6B80'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
         <circle cx="12" cy="7" r="4" />
       </svg>
@@ -83,10 +94,10 @@ export default function BottomNav() {
           left: 0;
           right: 0;
           z-index: 1000;
-          background: rgba(13, 13, 26, 0.92);
+          background: var(--nav-bg);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          border-top: 1px solid var(--border-color);
           padding-bottom: env(safe-area-inset-bottom, 0px);
         }
 
@@ -96,7 +107,7 @@ export default function BottomNav() {
           align-items: center;
           max-width: 480px;
           margin: 0 auto;
-          padding: 8px 0 6px;
+          padding: 8px 2px 6px;
         }
 
         .nav-item {
@@ -104,7 +115,7 @@ export default function BottomNav() {
           flex-direction: column;
           align-items: center;
           gap: 4px;
-          padding: 4px 16px;
+          padding: 4px 10px;
           text-decoration: none;
           transition: all 0.2s ease;
           position: relative;
@@ -121,6 +132,11 @@ export default function BottomNav() {
           justify-content: center;
           width: 32px;
           height: 32px;
+          color: var(--icon-inactive);
+        }
+
+        .nav-item-active .nav-icon {
+          color: var(--icon-active);
         }
 
         .nav-active-dot {
@@ -131,19 +147,19 @@ export default function BottomNav() {
           width: 4px;
           height: 4px;
           border-radius: 50%;
-          background: #7B42C4;
+          background: var(--icon-active);
           animation: scaleIn 0.3s ease-out;
         }
 
         .nav-label {
           font-size: 11px;
           font-weight: 500;
-          color: #6B6B80;
+          color: var(--text-muted);
           transition: color 0.2s ease;
         }
 
         .nav-item-active .nav-label {
-          color: #B68AFF;
+          color: var(--text-accent);
           font-weight: 600;
         }
 

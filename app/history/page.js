@@ -18,6 +18,10 @@ export default function HistoryPage() {
   const router = useRouter();
   const [transactions, setTransactions] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [period, setPeriod] = useState('month'); // today | week | month | custom
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [selectedTxn, setSelectedTxn] = useState(null);
   const [returnMode, setReturnMode] = useState(null); // null | 'all' | 'select'
   const [selectedItems, setSelectedItems] = useState({});
@@ -128,9 +132,43 @@ export default function HistoryPage() {
     );
   };
 
-  // Filter: hide auto-generated payment_in entries
+  const inSelectedPeriod = (txnDate) => {
+    const d = new Date(txnDate);
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (period === 'today') return d >= startOfToday;
+    if (period === 'week') {
+      const start = new Date(startOfToday);
+      start.setDate(start.getDate() - 6);
+      return d >= start;
+    }
+    if (period === 'month') {
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }
+    if (period === 'custom') {
+      if (!customFrom || !customTo) return true;
+      const from = new Date(`${customFrom}T00:00:00`);
+      const to = new Date(`${customTo}T23:59:59`);
+      return d >= from && d <= to;
+    }
+    return true;
+  };
+
+  const matchesSearch = (t) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    const name = (t.party?.name || '').toLowerCase();
+    const note = (t.note || '').toLowerCase();
+    const type = (t.type || '').toLowerCase();
+    const amount = String(t.amount || '');
+    return name.includes(q) || note.includes(q) || type.includes(q) || amount.includes(q);
+  };
+
+  // Filter: hide auto-generated payment_in entries + type + period + search
   const visibleTransactions = (filter === 'all' ? transactions : transactions.filter((t) => t.type === filter))
-    .filter(t => !isAutoPayment(t));
+    .filter(t => !isAutoPayment(t))
+    .filter(t => inSelectedPeriod(t.date))
+    .filter(matchesSearch);
 
   const filters = [
     { key: 'all', label: 'All' },
@@ -141,9 +179,9 @@ export default function HistoryPage() {
   ];
 
   const getTypeColor = (type) => {
-    if (type === 'sale' || type === 'payment_in') return '#22C55E';
+    if (type === 'sale' || type === 'payment_in') return 'var(--color-success)';
     if (type === 'return') return '#F59E0B';
-    return '#EF4444';
+    return 'var(--color-danger)';
   };
   const getTypeIcon = (type) => {
     if (type === 'sale') return '💰';
@@ -169,6 +207,28 @@ export default function HistoryPage() {
           ))}
         </div>
 
+        <div className="tools-row">
+          <input
+            className="search-box"
+            placeholder="Search by party, note, amount..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <select className="period-select" value={period} onChange={(e) => setPeriod(e.target.value)}>
+            <option value="today">Today</option>
+            <option value="week">1 Week</option>
+            <option value="month">1 Month</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        {period === 'custom' && (
+          <div className="custom-row">
+            <input type="date" className="date-input" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+            <span className="to-sep">to</span>
+            <input type="date" className="date-input" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+          </div>
+        )}
+
         {visibleTransactions.length === 0 ? (
           <div className="empty">
             <p className="empty-icon">📜</p>
@@ -192,7 +252,7 @@ export default function HistoryPage() {
                         <p className="txn-item-count">{t.items.length} item{t.items.length > 1 ? 's' : ''}</p>
                       )}
                       {isPartial && (
-                        <p className="txn-khata-info">₹{linkedPay.amount} paid · ₹{khataAmt} in Khata</p>
+                        <p className="txn-khata-info">₹{linkedPay.amount} paid · ₹{khataAmt} in Ledger</p>
                       )}
                     </div>
                   </div>
@@ -320,27 +380,48 @@ export default function HistoryPage() {
         .hist-page { min-height:100dvh; background:var(--bg-primary); padding-bottom:88px; }
         .hist-content { max-width:480px; margin:0 auto; padding:16px; }
         .hist-header { padding:12px 0 20px; }
-        .hist-title { font-size:24px; font-weight:800; color:white; }
-        .hist-sub { font-size:13px; color:#6B6B80; margin-top:4px; }
-        .filter-row { display:flex; gap:8px; margin-bottom:20px; overflow-x:auto; -ms-overflow-style:none; scrollbar-width:none; }
+        .hist-title { font-size:24px; font-weight:800; color: var(--text-primary); }
+        .hist-sub { font-size:13px; color: var(--text-muted); margin-top:4px; }
+        .filter-row { display:flex; gap:8px; margin-bottom:12px; overflow-x:auto; -ms-overflow-style:none; scrollbar-width:none; }
         .filter-row::-webkit-scrollbar { display:none; }
         .filter-chip {
           padding:7px 14px; border-radius:20px; font-size:12px; font-weight:500;
-          background:rgba(255,255,255,.05); color:#A0A0B8;
+          background:rgba(255,255,255,.05); color: var(--text-secondary);
           border:1px solid rgba(255,255,255,.06); cursor:pointer;
           white-space:nowrap; transition:all .2s;
         }
         .filter-active { background:rgba(123,66,196,.2); color:#B68AFF; border-color:rgba(123,66,196,.3); }
+        .tools-row { display:flex; gap:8px; margin-bottom:10px; }
+        .search-box {
+          flex:1; height:40px; border-radius:10px; padding:0 12px;
+          background: var(--bg-input); border:1px solid var(--border-color);
+          color: var(--text-primary); font-size:13px;
+        }
+        .search-box::placeholder { color: var(--text-muted); }
+        .period-select {
+          width:118px; height:40px; border-radius:10px; padding:0 10px;
+          background: var(--bg-input); border:1px solid var(--border-color);
+          color: var(--text-primary); font-size:13px;
+        }
+        .custom-row {
+          display:flex; align-items:center; gap:8px; margin-bottom:16px;
+        }
+        .date-input {
+          flex:1; height:38px; border-radius:10px; padding:0 10px;
+          background: var(--bg-input); border:1px solid var(--border-color);
+          color: var(--text-primary); font-size:12px;
+        }
+        .to-sep { font-size:12px; color: var(--text-muted); }
 
         .empty { text-align:center; padding:60px 16px; }
         .empty-icon { font-size:48px; margin-bottom:12px; }
-        .empty-title { font-size:16px; font-weight:600; color:white; margin-bottom:6px; }
-        .empty-sub { font-size:13px; color:#6B6B80; }
+        .empty-title { font-size:16px; font-weight:600; color: var(--text-primary); margin-bottom:6px; }
+        .empty-sub { font-size:13px; color: var(--text-muted); }
 
         .txn-list { display:flex; flex-direction:column; gap:8px; }
         .txn-card {
           display:flex; justify-content:space-between; align-items:center;
-          padding:14px 16px; background:#252540; border-radius:14px;
+          padding:14px 16px; background: var(--bg-surface-solid); border-radius:14px;
           border:1px solid rgba(255,255,255,.04); cursor:pointer;
           transition:all .15s; width:100%; text-align:left;
         }
@@ -348,9 +429,9 @@ export default function HistoryPage() {
         .txn-left { display:flex; gap:12px; align-items:center; flex:1; min-width:0; }
         .txn-emoji { font-size:28px; flex-shrink:0; }
         .txn-text { min-width:0; }
-        .txn-name { font-size:14px; font-weight:600; color:white; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .txn-name { font-size:14px; font-weight:600; color: var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .txn-date { font-size:11px; color:#4A4A60; margin-top:2px; }
-        .txn-item-count { font-size:11px; color:#6B6B80; margin-top:2px; }
+        .txn-item-count { font-size:11px; color: var(--text-muted); margin-top:2px; }
         .txn-khata-info { font-size:11px; color:#F59E0B; margin-top:2px; font-weight:600; }
         .khata-badge { font-size:14px; margin-right:2px; }
         .txn-right { display:flex; align-items:center; gap:6px; flex-shrink:0; }
@@ -367,15 +448,15 @@ export default function HistoryPage() {
         .sheet-handle { width:40px; height:4px; border-radius:2px; background:rgba(255,255,255,.15); margin:0 auto 16px; }
         .sheet-header { display:flex; align-items:center; gap:14px; margin-bottom:20px; }
         .sheet-icon { font-size:36px; }
-        .sheet-title { font-size:18px; font-weight:700; color:white; text-transform:capitalize; }
-        .sheet-date { font-size:12px; color:#6B6B80; margin-top:2px; }
+        .sheet-title { font-size:18px; font-weight:700; color: var(--text-primary); text-transform:capitalize; }
+        .sheet-date { font-size:12px; color: var(--text-muted); margin-top:2px; }
         .sheet-amount { font-size:24px; font-weight:800; margin-left:auto; }
 
-        .sheet-info-row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.04); font-size:14px; color:#6B6B80; }
-        .sheet-info-val { color:white; font-weight:500; }
+        .sheet-info-row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.04); font-size:14px; color: var(--text-muted); }
+        .sheet-info-val { color: var(--text-primary); font-weight:500; }
 
         .sheet-items { margin-top:16px; }
-        .sheet-items h3 { font-size:13px; color:#6B6B80; text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
+        .sheet-items h3 { font-size:13px; color: var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
         .sheet-item {
           display:flex; align-items:center; gap:12px;
           padding:12px; background:rgba(255,255,255,.03); border-radius:10px;
@@ -385,9 +466,9 @@ export default function HistoryPage() {
         .sheet-item.selectable:hover { background:rgba(255,255,255,.06); }
         .sheet-item.selected { border-color:rgba(245,158,11,.4); background:rgba(245,158,11,.06); }
         .sheet-item-info { flex:1; }
-        .sheet-item-name { font-size:14px; font-weight:600; color:white; }
-        .sheet-item-meta { font-size:12px; color:#6B6B80; margin-top:2px; }
-        .sheet-item-total { font-size:14px; font-weight:700; color:white; }
+        .sheet-item-name { font-size:14px; font-weight:600; color: var(--text-primary); }
+        .sheet-item-meta { font-size:12px; color: var(--text-muted); margin-top:2px; }
+        .sheet-item-total { font-size:14px; font-weight:700; color: var(--text-primary); }
 
         .qty-controls { display:flex; align-items:center; gap:6px; }
         .qty-btn {
@@ -397,7 +478,7 @@ export default function HistoryPage() {
           display:flex; align-items:center; justify-content:center; transition:all .15s;
         }
         .qty-btn:active { background:rgba(245,158,11,.25); }
-        .qty-val { font-size:16px; font-weight:800; color:white; min-width:24px; text-align:center; }
+        .qty-val { font-size:16px; font-weight:800; color: var(--text-primary); min-width:24px; text-align:center; }
 
         .checkbox {
           width:22px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,.15);
@@ -419,24 +500,24 @@ export default function HistoryPage() {
         .return-select:hover { background:rgba(74,108,247,.15); }
 
         .confirm-section { margin-top:16px; padding:16px; background:rgba(245,158,11,.05); border:1px solid rgba(245,158,11,.15); border-radius:14px; }
-        .confirm-text { font-size:14px; color:#A0A0B8; margin-bottom:14px; text-align:center; }
+        .confirm-text { font-size:14px; color: var(--text-secondary); margin-bottom:14px; text-align:center; }
         .confirm-btns { display:flex; gap:10px; }
         .confirm-btn { flex:1; padding:12px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; border:none; transition:all .15s; }
-        .confirm-btn.cancel { background:rgba(255,255,255,.06); color:#A0A0B8; }
+        .confirm-btn.cancel { background:rgba(255,255,255,.06); color: var(--text-secondary); }
         .confirm-btn.proceed { background:rgba(245,158,11,.15); color:#F59E0B; }
         .confirm-btn.proceed:hover { background:rgba(245,158,11,.25); }
         .confirm-btn:disabled { opacity:.5; cursor:not-allowed; }
 
-        .sheet-close { width:100%; padding:14px; margin-top:16px; border-radius:12px; background:rgba(255,255,255,.04); color:#6B6B80; border:none; font-size:14px; font-weight:600; cursor:pointer; transition:all .15s; }
-        .sheet-close:hover { background:rgba(255,255,255,.08); color:white; }
+        .sheet-close { width:100%; padding:14px; margin-top:16px; border-radius:12px; background:rgba(255,255,255,.04); color: var(--text-muted); border:none; font-size:14px; font-weight:600; cursor:pointer; transition:all .15s; }
+        .sheet-close:hover { background:rgba(255,255,255,.08); color: var(--text-primary); }
 
         .toast {
           position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
           padding:12px 24px; border-radius:12px; font-size:14px; font-weight:600;
           z-index:3000; animation:slideUp .3s ease-out;
         }
-        .toast.success { background:rgba(34,197,94,.15); color:#22C55E; border:1px solid rgba(34,197,94,.2); }
-        .toast.error { background:rgba(239,68,68,.15); color:#EF4444; border:1px solid rgba(239,68,68,.2); }
+        .toast.success { background:rgba(34,197,94,.15); color:var(--color-success); border:1px solid rgba(34,197,94,.2); }
+        .toast.error { background:rgba(239,68,68,.15); color:var(--color-danger); border:1px solid rgba(239,68,68,.2); }
 
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
         @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }

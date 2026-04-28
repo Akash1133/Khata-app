@@ -1,7 +1,7 @@
 {
-  "name": "Khata - Smart Business Ledger",
-  "short_name": "Khata",
-  "description": "Manage your business khata, inventory, and profits",
+  "name": "Profitly - Smart Business Ledger",
+  "short_name": "Profitly",
+  "description": "Manage your business ledger, inventory, and profits",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0D0D1A",

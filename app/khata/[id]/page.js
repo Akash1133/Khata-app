@@ -183,55 +183,55 @@ export default function PartyDetailsPage({ params }) {
       </div>
 
       <style jsx>{`
-        .party-page { min-height: 100dvh; background: var(--bg-primary); padding-bottom: 88px; color: white; }
+        .party-page { min-height: 100dvh; background: var(--bg-primary); padding-bottom: 88px; color: var(--text-primary); }
         .party-content { max-width: 480px; margin: 0 auto; padding: 16px; }
         .header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-top: 8px; }
-        .back-btn { background: rgba(255,255,255,0.05); border: none; width: 40px; height: 40px; border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .back-btn { background: rgba(255,255,255,0.05); border: none; width: 40px; height: 40px; border-radius: 12px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .header h1 { font-size: 20px; font-weight: 700; margin: 0; }
-        .header p { font-size: 13px; color: #A0A0B8; margin: 0; }
+        .header p { font-size: 13px; color: var(--text-secondary); margin: 0; }
         
-        .balance-card { background: #252540; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.04); }
-        .bal-label { font-size: 14px; color: #A0A0B8; margin-bottom: 8px; }
-        .bal-settled { font-size: 28px; color: #A0A0B8; }
-        .bal-get { font-size: 28px; color: #EF4444; }
-        .bal-give { font-size: 28px; color: #22C55E; }
+        .balance-card { background: var(--bg-surface-solid); border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.04); }
+        .bal-label { font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; }
+        .bal-settled { font-size: 28px; color: var(--text-secondary); }
+        .bal-get { font-size: 28px; color: var(--color-danger); }
+        .bal-give { font-size: 28px; color: var(--color-success); }
         .balance-card small { font-size: 14px; opacity: 0.8; font-weight: 500; display: block; margin-top: 4px; }
 
         .action-row { display: flex; gap: 12px; margin-bottom: 32px; }
-        .action-btn { flex: 1; padding: 12px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; color: white; cursor: pointer; transition: transform 0.2s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .action-btn { flex: 1; padding: 12px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; color: var(--text-primary); cursor: pointer; transition: transform 0.2s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .action-btn small { font-size: 11px; font-weight: 500; opacity: 0.9; }
         .action-btn:active { transform: scale(0.95); }
-        .red-btn { background: #EF4444; }
-        .green-btn { background: #22C55E; }
+        .red-btn { background: var(--color-danger); }
+        .green-btn { background: var(--color-success); }
 
-        .history-section h3 { font-size: 16px; margin-bottom: 16px; color: #A0A0B8; }
+        .history-section h3 { font-size: 16px; margin-bottom: 16px; color: var(--text-secondary); }
         .txn-list { display: flex; flex-direction: column; gap: 10px; }
-        .txn-card { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: #252540; border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); }
+        .txn-card { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: var(--bg-surface-solid); border-radius: 12px; border: 1px solid rgba(255,255,255,0.04); }
         .txn-type { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
-        .txn-date { font-size: 12px; color: #6B6B80; }
-        .txn-note { font-size: 12px; color: #A0A0B8; margin-top: 4px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; display: inline-block; }
+        .txn-date { font-size: 12px; color: var(--text-muted); }
+        .txn-note { font-size: 12px; color: var(--text-secondary); margin-top: 4px; background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; display: inline-block; }
         .txn-amt { font-size: 16px; font-weight: 700; }
-        .txn-amt.green { color: #22C55E; }
-        .txn-amt.red { color: #EF4444; }
+        .txn-amt.green { color: var(--color-success); }
+        .txn-amt.red { color: var(--color-danger); }
 
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px; backdrop-filter: blur(4px); }
-        .modal-content { background: #252540; width: 100%; max-width: 400px; border-radius: 20px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); }
+        .modal-content { background: var(--bg-surface-solid); width: 100%; max-width: 400px; border-radius: 20px; padding: 24px; border: 1px solid rgba(255,255,255,0.1); }
         .modal-content h2 { font-size: 20px; margin-bottom: 20px; }
-        .modal-content h2.green { color: #22C55E; }
-        .modal-content h2.red { color: #EF4444; }
+        .modal-content h2.green { color: var(--color-success); }
+        .modal-content h2.red { color: var(--color-danger); }
         
         .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 13px; color: #A0A0B8; margin-bottom: 8px; }
+        .form-group label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
         .custom-select { 
           width: 100%; padding: 12px 14px; background: rgba(0,0,0,0.2); 
           border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; 
-          color: white; font-size: 14px; outline: none; margin-bottom: 16px;
+          color: var(--text-primary); font-size: 14px; outline: none; margin-bottom: 16px;
         }
         
         .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
         .modal-actions > * { flex: 1; }
-        .cancel-btn { background: rgba(255,255,255,0.05); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; }
-        .loading { color: white; text-align: center; padding: 40px; }
+        .cancel-btn { background: rgba(255,255,255,0.05); color: var(--text-primary); border: none; border-radius: 12px; font-weight: 600; cursor: pointer; }
+        .loading { color: var(--text-primary); text-align: center; padding: 40px; }
       `}</style>
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserStore } from '../../lib/store';
 import { AuthService } from '../../lib/auth';
@@ -9,9 +9,17 @@ import Input from '../../components/Input';
 
 export default function SetupPage() {
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [businessName, setBusinessName] = useState('');
+  const existingUser = UserStore.get() || {};
+
+  useEffect(() => {
+    if (!existingUser.id) {
+      router.replace('/auth/phone');
+    }
+  }, []);
+  
+  const [name, setName] = useState(existingUser.name && existingUser.name !== 'New User' ? existingUser.name : '');
+  const [email, setEmail] = useState(existingUser.email || '');
+  const [businessName, setBusinessName] = useState(existingUser.businessName || '');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -22,18 +30,25 @@ export default function SetupPage() {
     if (Object.keys(newErrors).length) { setErrors(newErrors); return; }
 
     setLoading(true);
-    // IMPORTANT: Merge with existing user data to preserve the server-assigned ID
-    const existingUser = UserStore.get() || {};
-    UserStore.save({ 
-      ...existingUser,
-      name: name.trim(), 
-      email: email.trim(), 
-      businessName: businessName.trim() 
-    });
+    try {
+      const updated = await UserStore.updateProfile({ 
+        name: name.trim(), 
+        email: email.trim(), 
+        businessName: businessName.trim() 
+      });
 
-    // Brief success animation delay
-    await new Promise((r) => setTimeout(r, 600));
-    router.replace('/dashboard');
+      if (updated) {
+        // Brief success animation delay
+        await new Promise((r) => setTimeout(r, 600));
+        router.replace('/dashboard');
+      } else {
+        setErrors({ submit: 'Failed to save profile. Please try again.' });
+      }
+    } catch (err) {
+      setErrors({ submit: 'Something went wrong.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -91,14 +106,14 @@ export default function SetupPage() {
         .auth-container { max-width: 400px; margin: 0 auto; }
         .auth-header { margin-bottom: 32px; margin-top: 40px; animation: fadeInUp 0.5s ease-out; }
         .auth-icon { font-size: 48px; margin-bottom: 16px; }
-        .auth-title { font-size: 24px; font-weight: 700; color: white; margin-bottom: 8px; }
-        .auth-desc { font-size: 15px; color: #6B6B80; }
+        .auth-title { font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+        .auth-desc { font-size: 15px; color: var(--text-muted); }
         .setup-form {
           display: flex; flex-direction: column; gap: 20px;
           animation: fadeInUp 0.5s ease-out 0.1s both;
         }
         .setup-info {
-          font-size: 13px; color: #6B6B80;
+          font-size: 13px; color: var(--text-muted);
           padding: 12px 14px; background: rgba(255,255,255,0.03);
           border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);
         }

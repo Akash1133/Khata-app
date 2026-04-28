@@ -84,6 +84,8 @@ export async function POST(request) {
         const n = Number(val);
         return isNaN(n) ? 0 : n;
       };
+      // Helper to round monetary values to 2 decimal places
+      const round2 = (val) => Math.round(safeNum(val) * 100) / 100;
 
       // 0. Auto-create Party if newPartyName is provided
       let finalPartyId = data.partyId || null;
@@ -104,7 +106,7 @@ export async function POST(request) {
       const transaction = await tx.transaction.create({
         data: {
           type: data.type,
-          amount: safeNum(data.amount),
+          amount: round2(data.amount),
           note: data.note || null,
           partyId: finalPartyId,
           userId,
@@ -114,7 +116,7 @@ export async function POST(request) {
               return {
                 productId: item.productId,
                 quantity: Math.max(0.001, safeNum(item.quantity)),
-                price: safeNum(item.price),
+                price: round2(item.price),
                 buyPrice: product ? product.buyPrice : 0,
               };
             })

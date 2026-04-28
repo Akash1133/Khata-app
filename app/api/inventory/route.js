@@ -83,16 +83,37 @@ export async function POST(request) {
     }
 
     const data = await request.json();
+    const name = (data.name || '').trim();
+    if (!name) {
+      return NextResponse.json({ error: 'Product name is required' }, { status: 400 });
+    }
+
+    const quantity = Number(data.quantity);
+    const buyPrice = Number(data.buyPrice);
+    const sellPrice = Number(data.sellPrice);
+    const lowStockThreshold = Number(data.lowStockThreshold);
+    if ([quantity, buyPrice, sellPrice, lowStockThreshold].some((n) => Number.isFinite(n) && n < 0)) {
+      return NextResponse.json({ error: 'Negative values are not allowed' }, { status: 400 });
+    }
+
+    const existing = await prisma.product.findFirst({
+      where: { userId, name: { equals: name, mode: 'insensitive' } },
+      select: { id: true }
+    });
+    if (existing) {
+      return NextResponse.json({ error: 'Product with same name already exists' }, { status: 409 });
+    }
     
-    // Convert to proper types
+    // Convert to proper types, round prices to 2 decimal places
+    const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
     const productData = {
-      name: data.name,
+      name,
       category: data.category || 'General',
       unit: data.unit || 'pcs',
-      quantity: Number(data.quantity) || 0,
-      buyPrice: Number(data.buyPrice) || 0,
-      sellPrice: Number(data.sellPrice) || 0,
-      lowStockThreshold: Number(data.lowStockThreshold) || 5,
+      quantity: Number.isFinite(quantity) ? quantity : 0,
+      buyPrice: round2(buyPrice),
+      sellPrice: round2(sellPrice),
+      lowStockThreshold: Number.isFinite(lowStockThreshold) ? lowStockThreshold : 0,
       userId,
     };
 

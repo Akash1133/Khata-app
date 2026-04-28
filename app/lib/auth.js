@@ -44,8 +44,8 @@ export const AuthService = {
       if (res.ok && data.success) {
         // Clear pending phone
         sessionStorage.removeItem(PHONE_KEY);
-        // We'll return user data to be stored by UserStore later
-        return { success: true, phone, user: data.user };
+        // Return server flags so caller can route new users to setup flow
+        return { success: true, phone, user: data.user, isNewUser: data.isNewUser };
       }
       return { success: false, message: data.error || 'Invalid OTP' };
     } catch (error) {

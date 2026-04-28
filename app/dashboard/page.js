@@ -11,6 +11,9 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ todaySales: 0, monthSales: 0, totalProducts: 0, lowStock: 0 });
   const [transactions, setTransactions] = useState([]);
 
+
+  // Replaced manual month series with getDailyStats from store
+
   useEffect(() => {
     const u = UserStore.get();
     if (!u) { router.replace('/'); return; }
@@ -21,15 +24,20 @@ export default function DashboardPage() {
         TransactionStore.getTodayTotal(),
         TransactionStore.getMonthTotal(),
         ProductStore.getAll(),
-      ]).then(([todaySales, monthSales, allProducts]) => {
+        TransactionStore.getAll(),
+      ]).then(([todaySales, monthSales, allProducts, allTxns]) => {
         setStats({
           todaySales,
           monthSales,
           totalProducts: allProducts.length,
           lowStock: allProducts.filter(p => p.quantity <= p.lowStockThreshold).length,
         });
+        setTransactions(
+          allTxns
+            .filter((t) => t.type === 'sale')
+            .slice(0, 5)
+        );
       });
-      TransactionStore.getRecent(5).then(setTransactions);
     };
 
     loadStats();
@@ -48,16 +56,16 @@ export default function DashboardPage() {
   if (!user) return null;
 
   const quickActions = [
-    { emoji: '➕', label: 'Add Sale', color: '#22C55E', href: '/sale' },
+    { emoji: '➕', label: 'Add Sale', color: 'var(--icon-active)', href: '/sale' },
     { emoji: '📦', label: 'Stock', color: '#4A6CF7', href: '/inventory' },
-    { emoji: '📒', label: 'Khata', color: '#F97316', href: '/khata' },
+    { emoji: '📒', label: 'Ledger', color: '#F97316', href: '/khata' },
     { emoji: '📊', label: 'P&L', color: '#EC4899', href: '/pl' },
   ];
 
   const formatCurrency = (n) => {
-    if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
-    if (n >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
-    return `₹${n}`;
+    if (n >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
+    if (n >= 1000) return `₹${(n / 1000).toFixed(2)}K`;
+    return `₹${Number(n).toFixed(2)}`;
   };
 
   return (
@@ -80,15 +88,15 @@ export default function DashboardPage() {
             <p className="stat-label">Today&apos;s Sales</p>
             <p className="stat-value stat-green">{formatCurrency(stats.todaySales)}</p>
           </Card>
-          <Card variant="gradient" padding="md" animate>
-            <p className="stat-label">This Month</p>
+          <Card variant="gradient" padding="md" animate onClick={() => router.push('/analytics')}>
+            <p className="stat-label">This Month <span style={{fontSize:'10px'}}>▼</span></p>
             <p className="stat-value stat-blue">{formatCurrency(stats.monthSales)}</p>
           </Card>
           <Card padding="md" animate>
             <p className="stat-label">Products</p>
             <p className="stat-value">{stats.totalProducts}</p>
           </Card>
-          <Card padding="md" animate>
+          <Card padding="md" animate onClick={() => router.push('/inventory/low-stock')}>
             <p className="stat-label">Low Stock</p>
             <p className="stat-value stat-red">{stats.lowStock}</p>
           </Card>
@@ -112,6 +120,8 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
+
+
 
         {/* Recent Transactions */}
         <div className="section">
@@ -140,7 +150,7 @@ export default function DashboardPage() {
                     <p className="txn-date">{new Date(t.date).toLocaleDateString()}</p>
                   </div>
                   <p className={`txn-amount ${t.type === 'sale' ? 'txn-green' : 'txn-red'}`}>
-                    {t.type === 'sale' ? '+' : '-'}₹{t.amount}
+                    {t.type === 'sale' ? '+' : '-'}₹{Number(t.amount).toFixed(2)}
                   </p>
                 </div>
               ))}
@@ -167,14 +177,14 @@ export default function DashboardPage() {
           padding: 12px 0 24px;
           animation: fadeInDown 0.5s ease-out;
         }
-        .dash-hello { font-size: 14px; color: #A0A0B8; margin-bottom: 4px; }
-        .dash-business { font-size: 20px; font-weight: 700; color: white; }
+        .dash-hello { font-size: 14px; color: var(--text-secondary); margin-bottom: 4px; }
+        .dash-business { font-size: 20px; font-weight: 700; color: var(--text-primary); }
         .dash-avatar {
           width: 44px; height: 44px;
           border-radius: 50%;
           background: linear-gradient(135deg, #7B42C4, #5B2D8E);
           display: flex; align-items: center; justify-content: center;
-          font-size: 18px; font-weight: 700; color: white;
+          font-size: 18px; font-weight: 700; color: var(--text-primary);
           cursor: pointer; transition: transform 0.2s;
         }
         .dash-avatar:active { transform: scale(0.9); }
@@ -185,21 +195,22 @@ export default function DashboardPage() {
           gap: 12px;
           margin-bottom: 28px;
         }
-        .stat-label { font-size: 12px; color: #A0A0B8; margin-bottom: 6px; font-weight: 500; }
-        .stat-value { font-size: 24px; font-weight: 800; color: white; font-family: var(--font-display); }
-        .stat-green { color: #22C55E; }
-        .stat-blue { color: #4A6CF7; }
-        .stat-red { color: #EF4444; }
+        .stat-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 500; }
+        .stat-value { font-size: 24px; font-weight: 800; color: var(--text-primary); font-family: var(--font-display); }
+        .stat-green { color: var(--text-primary); }
+        .stat-blue { color: var(--text-primary); }
+        .stat-red { color: var(--text-primary); }
 
         .section { margin-bottom: 28px; }
         .section-header { display: flex; justify-content: space-between; align-items: center; }
-        .section-title { font-size: 16px; font-weight: 700; color: white; margin-bottom: 14px; }
+        .section-title { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 14px; }
+        .section-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
         .see-all {
           font-size: 13px; color: #7B42C4; font-weight: 600;
           background: none; border: none; cursor: pointer;
           padding: 4px 8px; border-radius: 6px; transition: background 0.2s;
         }
-        .see-all:hover { background: rgba(123,66,196,0.1); }
+        .see-all:hover { background: var(--bg-purple-subtle); }
 
         .actions-grid {
           display: grid;
@@ -210,26 +221,28 @@ export default function DashboardPage() {
           display: flex; flex-direction: column;
           align-items: center; gap: 8px;
           padding: 16px 8px;
-          background: rgba(37, 37, 64, 0.5);
-          border: 1px solid rgba(255,255,255,0.06);
+          background: var(--bg-surface);
+          border: 1px solid var(--border-color);
           border-radius: 14px;
           cursor: pointer; transition: all 0.2s;
         }
-        .action-btn:hover { background: rgba(37, 37, 64, 0.8); transform: translateY(-2px); }
+        .action-btn:hover { background: var(--bg-surface-hover); transform: translateY(-2px); }
         .action-btn:active { transform: scale(0.95); }
         .action-icon { font-size: 28px; }
-        .action-label { font-size: 12px; font-weight: 600; color: #A0A0B8; }
+        .action-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+
+
 
         .empty-state {
           text-align: center;
           padding: 32px 16px;
-          background: rgba(37, 37, 64, 0.3);
+          background: var(--bg-surface-subtle);
           border-radius: 16px;
-          border: 1px dashed rgba(255,255,255,0.08);
+          border: 1px dashed var(--border-color);
         }
         .empty-icon { font-size: 40px; margin-bottom: 12px; }
-        .empty-text { font-size: 15px; font-weight: 600; color: white; margin-bottom: 4px; }
-        .empty-sub { font-size: 13px; color: #6B6B80; margin-bottom: 16px; }
+        .empty-text { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+        .empty-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
         .empty-cta {
           font-size: 14px; font-weight: 600; color: #7B42C4;
           background: rgba(123,66,196,0.12); border: none;
@@ -242,16 +255,16 @@ export default function DashboardPage() {
         .txn-item {
           display: flex; align-items: center; gap: 12px;
           padding: 12px 14px;
-          background: #252540; border-radius: 12px;
-          border: 1px solid rgba(255,255,255,0.04);
+          background: var(--bg-surface-solid); border-radius: 12px;
+          border: 1px solid var(--border-color);
         }
         .txn-icon { font-size: 24px; }
         .txn-info { flex: 1; }
-        .txn-name { font-size: 14px; font-weight: 600; color: white; }
-        .txn-date { font-size: 12px; color: #6B6B80; margin-top: 2px; }
+        .txn-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .txn-date { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
         .txn-amount { font-size: 15px; font-weight: 700; }
-        .txn-green { color: #22C55E; }
-        .txn-red { color: #EF4444; }
+        .txn-green { color: var(--color-success); }
+        .txn-red { color: var(--color-danger); }
 
         @keyframes fadeInDown {
           from { opacity: 0; transform: translateY(-16px); }

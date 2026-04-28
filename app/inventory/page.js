@@ -11,6 +11,10 @@ export default function InventoryPage() {
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const toNum = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
 
   useEffect(() => {
     ProductStore.getAll().then(setProducts);
@@ -22,12 +26,14 @@ export default function InventoryPage() {
     return matchSearch && matchCat;
   });
 
-  const totalValue = products.reduce((s, p) => s + p.quantity * p.sellPrice, 0);
+  const totalValue = products.reduce((s, p) => s + toNum(p.quantity) * toNum(p.sellPrice), 0);
 
   const getStockBadge = (p) => {
-    if (p.quantity === 0) return { label: 'Out', color: '#EF4444', bg: 'rgba(239,68,68,0.12)' };
-    if (p.quantity <= p.lowStockThreshold) return { label: 'Low', color: '#F97316', bg: 'rgba(249,115,22,0.12)' };
-    return { label: 'In Stock', color: '#22C55E', bg: 'rgba(34,197,94,0.12)' };
+    const qty = toNum(p.quantity);
+    const threshold = toNum(p.lowStockThreshold);
+    if (qty === 0) return { label: 'Out', color: 'var(--color-danger)', bg: 'rgba(239,68,68,0.12)' };
+    if (qty <= threshold) return { label: 'Low', color: '#F97316', bg: 'rgba(249,115,22,0.12)' };
+    return { label: 'In Stock', color: 'var(--color-success)', bg: 'rgba(34,197,94,0.12)' };
   };
 
   return (
@@ -37,7 +43,7 @@ export default function InventoryPage() {
         <div className="inv-header">
           <div>
             <h1 className="inv-title">Inventory</h1>
-            <p className="inv-subtitle">{products.length} products · ₹{totalValue.toLocaleString('en-IN')} value</p>
+            <p className="inv-subtitle">{products.length} products · ₹{totalValue.toFixed(2)} value</p>
           </div>
           <div className="inv-header-actions">
             <button className="add-btn-icon" onClick={() => router.push('/inventory/bulk')} title="Bulk Add">
@@ -94,8 +100,11 @@ export default function InventoryPage() {
           <div className="product-list">
             {filtered.map((p) => {
               const badge = getStockBadge(p);
-              const profit = p.sellPrice - p.buyPrice;
-              const margin = p.buyPrice > 0 ? ((profit / p.buyPrice) * 100).toFixed(0) : 0;
+              const qty = toNum(p.quantity);
+              const buyPrice = toNum(p.buyPrice);
+              const sellPrice = toNum(p.sellPrice);
+              const profit = sellPrice - buyPrice;
+              const margin = buyPrice > 0 ? ((profit / buyPrice) * 100).toFixed(2) : '0.00';
               return (
                 <Card key={p.id} padding="md" onClick={() => router.push(`/inventory/${p.id}`)} className="product-card">
                   <div className="prod-top">
@@ -110,15 +119,15 @@ export default function InventoryPage() {
                   <div className="prod-bottom">
                     <div className="prod-stat">
                       <span className="prod-stat-label">Qty</span>
-                      <span className="prod-stat-value">{p.quantity}</span>
+                      <span className="prod-stat-value">{qty}</span>
                     </div>
                     <div className="prod-stat">
                       <span className="prod-stat-label">Buy</span>
-                      <span className="prod-stat-value">₹{p.buyPrice}</span>
+                      <span className="prod-stat-value">₹{buyPrice.toFixed(2)}</span>
                     </div>
                     <div className="prod-stat">
                       <span className="prod-stat-label">Sell</span>
-                      <span className="prod-stat-value">₹{p.sellPrice}</span>
+                      <span className="prod-stat-value">₹{sellPrice.toFixed(2)}</span>
                     </div>
                     <div className="prod-stat">
                       <button 
@@ -146,33 +155,33 @@ export default function InventoryPage() {
           display: flex; justify-content: space-between; align-items: flex-start;
           padding: 12px 0 20px; animation: fadeIn 0.4s ease-out;
         }
-        .inv-title { font-size: 24px; font-weight: 800; color: white; }
-        .inv-subtitle { font-size: 13px; color: #6B6B80; margin-top: 4px; }
+        .inv-title { font-size: 24px; font-weight: 800; color: var(--text-primary); }
+        .inv-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
         .inv-header-actions { display: flex; gap: 8px; align-items: center; }
         .add-btn-icon {
           width: 36px; height: 36px; border-radius: 10px;
           background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
           display: flex; align-items: center; justify-content: center;
-          color: #A0A0B8; cursor: pointer; transition: all 0.2s;
+          color: var(--text-secondary); cursor: pointer; transition: all 0.2s;
         }
-        .add-btn-icon:hover { background: rgba(255,255,255,0.1); color: white; }
+        .add-btn-icon:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
 
         .search-bar {
           display: flex; align-items: center; gap: 10px;
-          background: #1A1A30; border: 1.5px solid rgba(255,255,255,0.06);
+          background: var(--bg-input-alt); border: 1.5px solid rgba(255,255,255,0.06);
           border-radius: 12px; padding: 0 14px; height: 46px;
           margin-bottom: 16px; transition: border-color 0.2s;
         }
         .search-bar:focus-within { border-color: rgba(123,66,196,0.5); }
         .search-input {
-          flex: 1; height: 100%; font-size: 14px; color: white; background: transparent;
+          flex: 1; height: 100%; font-size: 14px; color: var(--text-primary); background: transparent;
         }
         .search-input::placeholder { color: #4A4A60; }
         .search-clear {
-          font-size: 14px; color: #6B6B80; background: none; border: none;
+          font-size: 14px; color: var(--text-muted); background: none; border: none;
           cursor: pointer; padding: 4px; transition: color 0.2s;
         }
-        .search-clear:hover { color: white; }
+        .search-clear:hover { color: var(--text-primary); }
 
         .cat-scroll {
           display: flex; gap: 8px; overflow-x: auto;
@@ -183,7 +192,7 @@ export default function InventoryPage() {
         .cat-chip {
           padding: 6px 14px; border-radius: 20px; font-size: 13px;
           font-weight: 500; white-space: nowrap;
-          background: rgba(255,255,255,0.05); color: #A0A0B8;
+          background: rgba(255,255,255,0.05); color: var(--text-secondary);
           border: 1px solid rgba(255,255,255,0.06);
           cursor: pointer; transition: all 0.2s;
         }
@@ -195,8 +204,8 @@ export default function InventoryPage() {
 
         .product-list { display: flex; flex-direction: column; gap: 10px; }
         .prod-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-        .prod-name { font-size: 15px; font-weight: 600; color: white; }
-        .prod-cat { font-size: 12px; color: #6B6B80; margin-top: 3px; }
+        .prod-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        .prod-cat { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
         .stock-badge {
           font-size: 11px; font-weight: 600; padding: 3px 8px;
           border-radius: 6px; white-space: nowrap;
@@ -205,8 +214,8 @@ export default function InventoryPage() {
         .prod-stat {
           flex: 1; display: flex; flex-direction: column; gap: 2px;
         }
-        .prod-stat-label { font-size: 11px; color: #6B6B80; }
-        .prod-stat-value { font-size: 14px; font-weight: 700; color: white; }
+        .prod-stat-label { font-size: 11px; color: var(--text-muted); }
+        .prod-stat-value { font-size: 14px; font-weight: 700; color: var(--text-primary); }
         .card-edit-btn {
           margin-top: 4px;
           background: rgba(123, 66, 196, 0.15);
@@ -227,8 +236,8 @@ export default function InventoryPage() {
           border: 1px dashed rgba(255,255,255,0.08);
         }
         .empty-icon { font-size: 48px; margin-bottom: 12px; }
-        .empty-title { font-size: 16px; font-weight: 600; color: white; margin-bottom: 6px; }
-        .empty-sub { font-size: 13px; color: #6B6B80; margin-bottom: 20px; }
+        .empty-title { font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+        .empty-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
         .empty-actions { display: flex; gap: 10px; justify-content: center; }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

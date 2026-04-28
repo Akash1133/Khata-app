@@ -79,6 +79,32 @@ export async function PUT(request, { params }) {
     if (!existing || existing.userId !== userId) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
 
     const data = await request.json();
+    if (data.name !== undefined) {
+      const nextName = String(data.name || '').trim();
+      if (!nextName) return NextResponse.json({ error: 'Product name is required' }, { status: 400 });
+      const dup = await prisma.product.findFirst({
+        where: {
+          userId,
+          name: { equals: nextName, mode: 'insensitive' },
+          NOT: { id }
+        },
+        select: { id: true }
+      });
+      if (dup) return NextResponse.json({ error: 'Product with same name already exists' }, { status: 409 });
+      data.name = nextName;
+    }
+    
+    // Normalize numeric fields
+    const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+    const toNum = (v) => Number(v) || 0;
+    if (data.buyPrice !== undefined) data.buyPrice = round2(data.buyPrice);
+    if (data.sellPrice !== undefined) data.sellPrice = round2(data.sellPrice);
+    if (data.quantity !== undefined) data.quantity = toNum(data.quantity);
+    if (data.lowStockThreshold !== undefined) data.lowStockThreshold = Math.max(0, Math.round(toNum(data.lowStockThreshold)));
+    if ([data.buyPrice, data.sellPrice, data.quantity, data.lowStockThreshold].some((n) => n !== undefined && n < 0)) {
+      return NextResponse.json({ error: 'Negative values are not allowed' }, { status: 400 });
+    }
+    
     const product = await prisma.product.update({
       where: { id },
       data

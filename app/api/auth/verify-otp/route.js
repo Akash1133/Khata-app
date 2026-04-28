@@ -77,8 +77,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Database synchronization error. Please try logging in again.' }, { status: 500 });
     }
 
-    console.log(`Login successful for ${phoneNumber}. Returning User ID: ${user.id}`);
-    return NextResponse.json({ success: true, user });
+    const isNewUser = !user.name || user.name === 'New User';
+    console.log(`Login successful for ${phoneNumber}. Returning User ID: ${user.id}, isNewUser: ${isNewUser}`);
+    return NextResponse.json({ success: true, user, isNewUser });
   } catch (error) {
     console.error('Verify OTP error:', error);
     return NextResponse.json({ error: 'Failed to verify OTP' }, { status: 500 });

@@ -33,6 +33,77 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
 
+// ========== REQUEST CACHE ==========
+const requestCache = new Map();
+const inflightRequests = new Map();
+const CACHE_TTL_MS = 15000; // 15s keeps navigation snappy without stale data for long
+const MAX_CACHE_ENTRIES = 100;
+const cacheVersions = {
+  '/api/inventory': 0,
+  '/api/parties': 0,
+  '/api/transactions': 0,
+};
+
+function cacheKey(url) {
+  const user = safeGet(KEYS.USER);
+  return `${user?.id || 'anon'}:${url}`;
+}
+
+function setCacheEntry(key, data, ttlMs, version) {
+  if (requestCache.size >= MAX_CACHE_ENTRIES) {
+    const oldestKey = requestCache.keys().next().value;
+    if (oldestKey) requestCache.delete(oldestKey);
+  }
+  requestCache.set(key, { data, expiresAt: Date.now() + ttlMs, version });
+}
+
+function getVersion(url) {
+  return cacheVersions[url] || 0;
+}
+
+async function cachedGet(url, ttlMs = CACHE_TTL_MS, options = {}) {
+  const { forceFresh = false } = options;
+  const key = cacheKey(url);
+  const now = Date.now();
+  const currentVersion = getVersion(url);
+  const cached = requestCache.get(key);
+  if (!forceFresh && cached && cached.expiresAt > now && cached.version === currentVersion) {
+    return cached.data;
+  }
+
+  const inflightKey = `${key}|v${currentVersion}|fresh:${forceFresh ? 1 : 0}`;
+  if (inflightRequests.has(inflightKey)) {
+    return inflightRequests.get(inflightKey);
+  }
+
+  const requestPromise = (async () => {
+    try {
+      const res = await authFetch(url);
+      const data = res.ok ? await res.json() : (url.includes('/api/') ? [] : null);
+      setCacheEntry(key, data, ttlMs, currentVersion);
+      return data;
+    } finally {
+      inflightRequests.delete(inflightKey);
+    }
+  })();
+
+  inflightRequests.set(inflightKey, requestPromise);
+  return requestPromise;
+}
+
+function invalidateCache(urlPrefix) {
+  if (cacheVersions[urlPrefix] !== undefined) {
+    cacheVersions[urlPrefix] += 1;
+  }
+  const keyPrefix = `${safeGet(KEYS.USER)?.id || 'anon'}:${urlPrefix}`;
+  for (const key of requestCache.keys()) {
+    if (key.startsWith(keyPrefix)) requestCache.delete(key);
+  }
+  for (const key of inflightRequests.keys()) {
+    if (key.startsWith(keyPrefix)) inflightRequests.delete(key);
+  }
+}
+
 async function authFetch(url, options = {}) {
   const user = safeGet(KEYS.USER);
   const headers = { ...options.headers };
@@ -72,15 +143,34 @@ export const UserStore = {
   logout() {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(KEYS.USER);
+    requestCache.clear();
+    inflightRequests.clear();
   },
+
+  async updateProfile(profileData) {
+    try {
+      const res = await authFetch('/api/auth/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return this.save(data.user);
+      }
+      return null;
+    } catch (e) {
+      console.error('Update profile error:', e);
+      return null;
+    }
+  }
 };
 
 // ========== PRODUCTS / INVENTORY ==========
 export const ProductStore = {
   async getAll() {
     try {
-      const res = await authFetch('/api/inventory');
-      return res.ok ? await res.json() : [];
+      return await cachedGet('/api/inventory');
     } catch {
       return [];
     }
@@ -102,9 +192,15 @@ export const ProductStore = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(product)
       });
-      return res.ok ? await res.json() : null;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        return { success: false, error: data.error || 'Could not save product', status: res.status };
+      }
+      const created = await res.json();
+      invalidateCache('/api/inventory');
+      return { success: true, data: created };
     } catch {
-      return null;
+      return { success: false, error: 'Network error while saving product' };
     }
   },
 
@@ -115,9 +211,15 @@ export const ProductStore = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(productsArray)
       });
-      return res.ok ? await res.json() : null;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        return { success: false, error: data.error || 'Could not save bulk products', status: res.status };
+      }
+      const result = await res.json();
+      invalidateCache('/api/inventory');
+      return { success: true, data: result };
     } catch {
-      return null;
+      return { success: false, error: 'Network error while saving bulk products' };
     }
   },
 
@@ -128,7 +230,10 @@ export const ProductStore = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
       });
-      return res.ok ? await res.json() : null;
+      if (!res.ok) return null;
+      const updated = await res.json();
+      invalidateCache('/api/inventory');
+      return updated;
     } catch {
       return null;
     }
@@ -137,6 +242,7 @@ export const ProductStore = {
   async delete(id) {
     try {
       await authFetch(`/api/inventory/${id}`, { method: 'DELETE' });
+      invalidateCache('/api/inventory');
     } catch (e) {
       console.error(e);
     }
@@ -176,8 +282,7 @@ export const ProductStore = {
 export const PartyStore = {
   async getAll() {
     try {
-      const res = await authFetch('/api/parties');
-      return res.ok ? await res.json() : [];
+      return await cachedGet('/api/parties');
     } catch {
       return [];
     }
@@ -199,7 +304,10 @@ export const PartyStore = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(party)
       });
-      return res.ok ? await res.json() : null;
+      if (!res.ok) return null;
+      const created = await res.json();
+      invalidateCache('/api/parties');
+      return created;
     } catch {
       return null;
     }
@@ -212,7 +320,10 @@ export const PartyStore = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
       });
-      return res.ok ? await res.json() : null;
+      if (!res.ok) return null;
+      const updated = await res.json();
+      invalidateCache('/api/parties');
+      return updated;
     } catch {
       return null;
     }
@@ -221,6 +332,7 @@ export const PartyStore = {
   async delete(id) {
     try {
       await authFetch(`/api/parties/${id}`, { method: 'DELETE' });
+      invalidateCache('/api/parties');
     } catch (e) {
       console.error(e);
     }
@@ -231,8 +343,8 @@ export const PartyStore = {
 export const TransactionStore = {
   async getAll() {
     try {
-      const res = await authFetch('/api/transactions');
-      return res.ok ? await res.json() : [];
+      // Transactions drive balances/ledger; always read fresh for strict consistency.
+      return await cachedGet('/api/transactions', CACHE_TTL_MS, { forceFresh: true });
     } catch {
       return [];
     }
@@ -247,6 +359,9 @@ export const TransactionStore = {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.details || data.error || 'Failed to add transaction');
+      invalidateCache('/api/transactions');
+      invalidateCache('/api/inventory');
+      invalidateCache('/api/parties');
       return { success: true, data };
     } catch (e) {
       return { success: false, error: e.message };
@@ -286,6 +401,78 @@ export const TransactionStore = {
         if (t.type === 'return') return sum - t.amount;
         return sum;
       }, 0);
+  },
+
+  async getDailyStats(days = 7, endDate = new Date()) {
+    const all = await this.getAll();
+    const stats = [];
+    const today = new Date(endDate);
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toDateString();
+      
+      const dayTxns = all.filter(t => new Date(t.date).toDateString() === dateStr && t.type === 'sale');
+      
+      let totalSale = 0;
+      let totalProfit = 0;
+      let itemsSold = 0;
+
+      dayTxns.forEach(t => {
+        totalSale += t.amount;
+        if (t.items) {
+          t.items.forEach(item => {
+            itemsSold += item.quantity;
+            const buyPrice = item.buyPrice || (item.product ? item.product.buyPrice : 0);
+            totalProfit += (item.price - buyPrice) * item.quantity;
+          });
+        }
+      });
+
+      stats.push({
+        dateStr: dateStr,
+        label: i === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' }),
+        totalSale,
+        totalProfit,
+        itemsSold
+      });
+    }
+    return stats;
+  },
+
+  async getMonthStats(targetYear, targetMonth) {
+    const all = await this.getAll();
+    const now = new Date();
+    const year = targetYear !== undefined ? targetYear : now.getFullYear();
+    const month = targetMonth !== undefined ? targetMonth : now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const stats = Array.from({ length: daysInMonth }, (_, i) => ({
+      day: i + 1,
+      dateStr: new Date(year, month, i + 1).toDateString(),
+      totalSale: 0,
+      totalProfit: 0,
+      itemsSold: 0,
+    }));
+
+    all.forEach(t => {
+      const d = new Date(t.date);
+      if (d.getFullYear() === year && d.getMonth() === month) {
+        const idx = d.getDate() - 1;
+        if (t.type === 'sale') {
+          stats[idx].totalSale += t.amount;
+          (t.items || []).forEach(item => {
+            stats[idx].itemsSold += item.quantity;
+            const buyPrice = item.buyPrice || (item.product ? item.product.buyPrice : 0);
+            stats[idx].totalProfit += (item.price - buyPrice) * item.quantity;
+          });
+        }
+      }
+    });
+
+    return stats;
   },
 };
 

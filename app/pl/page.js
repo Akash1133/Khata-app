@@ -148,39 +148,39 @@ export default function ProfitLossPage() {
       </div>
 
       <style jsx>{`
-        .pl-page { min-height: 100dvh; background: var(--bg-primary); padding-bottom: 88px; color: white; }
+        .pl-page { min-height: 100dvh; background: var(--bg-primary); padding-bottom: 88px; color: var(--text-primary); }
         .pl-content { max-width: 480px; margin: 0 auto; padding: 16px; }
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-top: 8px; }
-        .back-btn, .download-btn { background: rgba(255,255,255,0.05); border: none; width: 40px; height: 40px; border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .back-btn, .download-btn { background: rgba(255,255,255,0.05); border: none; width: 40px; height: 40px; border-radius: 12px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
         .back-btn:hover, .download-btn:hover { background: rgba(255,255,255,0.1); }
         .header h1 { font-size: 20px; font-weight: 700; margin: 0; flex: 1; text-align: center; }
         
-        .report-card { background: #252540; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.04); }
+        .report-card { background: var(--bg-surface-solid); border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.04); }
         .primary-card { background: linear-gradient(135deg, rgba(123,66,196,0.2), rgba(91,45,142,0.1)); border-color: rgba(123,66,196,0.3); }
-        .card-label { font-size: 14px; color: #A0A0B8; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .card-label { font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
         .card-value { font-size: 36px; font-weight: 800; font-family: var(--font-display); }
-        .card-value.green { color: #22C55E; }
-        .card-value.red { color: #EF4444; }
-        .card-sub { font-size: 12px; color: #6B6B80; margin-top: 8px; }
+        .card-value.green { color: var(--color-success); }
+        .card-value.red { color: var(--color-danger); }
+        .card-sub { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
 
         .breakdown-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
-        .breakdown-card { background: #252540; padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.04); }
+        .breakdown-card { background: var(--bg-surface-solid); padding: 16px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.04); }
         .bd-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 12px; }
         .green-bg { background: rgba(34, 197, 94, 0.2); }
         .red-bg { background: rgba(239, 68, 68, 0.2); }
         .blue-bg { background: rgba(74, 108, 247, 0.2); }
-        .bd-label { font-size: 12px; color: #A0A0B8; margin-bottom: 4px; }
+        .bd-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
         .bd-value { font-size: 18px; font-weight: 700; }
 
-        .section h3 { font-size: 16px; margin-bottom: 12px; color: #A0A0B8; }
-        .list-card { background: #252540; border-radius: 16px; border: 1px solid rgba(255,255,255,0.04); overflow: hidden; }
+        .section h3 { font-size: 16px; margin-bottom: 12px; color: var(--text-secondary); }
+        .list-card { background: var(--bg-surface-solid); border-radius: 16px; border: 1px solid rgba(255,255,255,0.04); overflow: hidden; }
         .list-row { display: flex; justify-content: space-between; padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 14px; }
         .list-row:last-child { border-bottom: none; }
         .total-row { font-weight: 700; font-size: 16px; background: rgba(255,255,255,0.02); }
-        .green { color: #22C55E; }
-        .red { color: #EF4444; }
+        .green { color: var(--color-success); }
+        .red { color: var(--color-danger); }
 
-        .loading { color: white; text-align: center; padding: 40px; }
+        .loading { color: var(--text-primary); text-align: center; padding: 40px; }
       `}</style>
     </div>
   );

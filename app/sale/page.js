@@ -17,6 +17,7 @@ export default function SalePage() {
 
   // Sale items list
   const [cart, setCart] = useState([]);
+  const [qtyDrafts, setQtyDrafts] = useState({});
   
   // Checkout State
   const [selectedParty, setSelectedParty] = useState('');
@@ -25,6 +26,16 @@ export default function SalePage() {
   const [amountPaid, setAmountPaid] = useState('');
   const [note, setNote] = useState('');
   const [search, setSearch] = useState('');
+  const fmtNum = (v) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return '0';
+    return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3)));
+  };
+  const fmtPrice = (v) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return '0';
+    return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(2)));
+  };
 
   useEffect(() => {
     Promise.all([ProductStore.getAll(), PartyStore.getAll()]).then(([prods, parts]) => {
@@ -55,6 +66,7 @@ export default function SalePage() {
   };
 
   const updateQuantity = (index, newQty) => {
+    if (newQty === '') return;
     const qty = Number(newQty);
     if (isNaN(qty) || qty <= 0) return;
     const maxStock = cart[index].product.quantity;
@@ -77,11 +89,66 @@ export default function SalePage() {
   };
 
   const removeFromCart = (index) => {
+    const item = cart[index];
     setCart(cart.filter((_, i) => i !== index));
+    if (item?.product?.id) {
+      setQtyDrafts((prev) => {
+        const next = { ...prev };
+        delete next[item.product.id];
+        return next;
+      });
+    }
   };
 
-  const getLineTotal = (item) => item.customTotal != null ? item.customTotal : item.price * item.quantity;
-  const totalAmount = cart.reduce((sum, item) => sum + getLineTotal(item), 0);
+  const handleQtyInputChange = (item, index, rawValue) => {
+    const productId = item.product.id;
+    const normalizeQtyInput = (v) => {
+      if (v === '') return '';
+      // Keep decimal typing usable, but remove unnecessary leading zeros.
+      if (v.startsWith('.')) return `0${v}`;
+      if (v.includes('.')) {
+        const [intPart, fracPart] = v.split('.');
+        const cleanInt = intPart.replace(/^0+(?=\d)/, '');
+        return `${cleanInt}.${fracPart ?? ''}`;
+      }
+      return v.replace(/^0+(?=\d)/, '');
+    };
+    const normalized = normalizeQtyInput(rawValue);
+    setQtyDrafts((prev) => ({ ...prev, [productId]: normalized }));
+    if (normalized === '') return;
+    const qty = Number(normalized);
+    if (Number.isNaN(qty)) return;
+    if (qty <= 0) return;
+    updateQuantity(index, qty);
+  };
+
+  const handleQtyInputBlur = (item, index) => {
+    const productId = item.product.id;
+    const draft = qtyDrafts[productId];
+    if (draft === undefined) return;
+    const trimmed = String(draft).trim();
+
+    if (trimmed === '') {
+      removeFromCart(index);
+      return;
+    }
+
+    const qty = Number(trimmed);
+    if (Number.isNaN(qty) || qty <= 0) {
+      removeFromCart(index);
+      return;
+    }
+
+    updateQuantity(index, qty);
+    setQtyDrafts((prev) => {
+      const next = { ...prev };
+      delete next[productId];
+      return next;
+    });
+  };
+
+  const getLineTotal = (item) => item.customTotal != null ? item.customTotal : Math.round(item.price * item.quantity * 100) / 100;
+  const totalAmount = Math.round(cart.reduce((sum, item) => sum + getLineTotal(item), 0) * 100) / 100;
 
   // Search filter
   const filteredProducts = search.trim()
@@ -153,18 +220,18 @@ export default function SalePage() {
           <div className="success-card">
             <div className="success-row highlight">
               <span>Total Bill</span>
-              <span className="success-val green">₹{successData.totalAmount}</span>
+              <span className="success-val green">₹{successData.totalAmount.toFixed(2)}</span>
             </div>
             {successData.partyName !== 'Walk-in Customer' && (
               <div className="success-row highlight-sub">
                 <span>Amount Paid Now</span>
-                <span className="success-val">₹{successData.amountPaid}</span>
+                <span className="success-val">₹{successData.amountPaid.toFixed(2)}</span>
               </div>
             )}
             {successData.partyName !== 'Walk-in Customer' && successData.amountPaid < successData.totalAmount && (
               <div className="success-row highlight-sub red">
                 <span>Added to Udhaar</span>
-                <span className="success-val">₹{successData.totalAmount - successData.amountPaid}</span>
+                <span className="success-val">₹{(successData.totalAmount - successData.amountPaid).toFixed(2)}</span>
               </div>
             )}
             <div className="success-row">
@@ -179,7 +246,7 @@ export default function SalePage() {
             {successData.items.map((item, i) => (
               <div key={i} className="success-row item-row">
                 <span>{item.name} × {item.qty}</span>
-                <span className="success-val">₹{item.qty * item.price}</span>
+                <span className="success-val">₹{(item.qty * item.price).toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -190,16 +257,16 @@ export default function SalePage() {
           .sale-page { min-height: 100dvh; background: var(--bg-primary); display: flex; align-items: center; justify-content: center; }
           .success-view { text-align: center; max-width: 400px; width: 100%; padding: 24px; }
           .success-icon { font-size: 64px; margin-bottom: 16px; animation: bounceIn 0.5s ease-out; }
-          .success-card { background: #252540; border-radius: 20px; padding: 24px; margin: 24px 0; border: 1px solid rgba(255,255,255,0.06); text-align: left; }
-          .success-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; color: #A0A0B8; }
+          .success-card { background: var(--bg-surface-solid); border-radius: 20px; padding: 24px; margin: 24px 0; border: 1px solid var(--border-color); text-align: left; }
+          .success-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; color: var(--text-secondary); }
           .success-row.highlight { font-size: 16px; padding: 12px 0 4px; }
-          .success-row.highlight-sub { font-size: 14px; padding: 4px 0; color: #A0A0B8; }
-          .success-row.highlight-sub.red { color: #EF4444; }
-          .success-val { color: white; font-weight: 700; }
-          .success-val.green { color: #22C55E; font-size: 20px; }
-          .success-divider { border-top: 1px dashed rgba(255,255,255,0.08); margin: 8px 0; }
+          .success-row.highlight-sub { font-size: 14px; padding: 4px 0; color: var(--text-secondary); }
+          .success-row.highlight-sub.red { color: var(--color-danger); }
+          .success-val { color: var(--text-primary); font-weight: 700; }
+          .success-val.green { color: var(--text-primary); font-size: 20px; }
+          .success-divider { border-top: 1px dashed var(--border-color); margin: 8px 0; }
           .item-row { font-size: 13px; }
-          h1 { color: white; font-weight: 800; margin-bottom: 8px; }
+          h1 { color: var(--text-primary); font-weight: 800; margin-bottom: 8px; }
           @keyframes bounceIn { 0%{transform:scale(.3);opacity:0} 50%{transform:scale(1.05)} 70%{transform:scale(.9)} 100%{transform:scale(1);opacity:1} }
         `}</style>
       </div>
@@ -217,7 +284,7 @@ export default function SalePage() {
           {cart.length > 0 && (
             <div className="header-total">
               <span className="header-total-label">{totalItemsCount} items</span>
-              <span className="header-total-amount">₹{totalAmount}</span>
+              <span className="header-total-amount">₹{totalAmount.toFixed(2)}</span>
             </div>
           )}
         </div>
@@ -246,8 +313,8 @@ export default function SalePage() {
                   disabled={outOfStock}
                 >
                   <span className="chip-name">{p.name}</span>
-                  <span className="chip-price">₹{p.sellPrice}</span>
-                  <span className="chip-stock">{p.quantity} {p.unit}</span>
+                  <span className="chip-price">₹{fmtPrice(p.sellPrice)}</span>
+                  <span className="chip-stock">{fmtNum(p.quantity)} {p.unit}</span>
                   {inCart && <span className="chip-badge">{inCart.quantity}</span>}
                 </button>
               );
@@ -270,7 +337,7 @@ export default function SalePage() {
                     <div className="cart-item-row1">
                       <div className="cart-item-info">
                         <p className="item-name">{item.product.name}</p>
-                        <p className="item-stock">{maxStock} {item.product.unit} in stock</p>
+                        <p className="item-stock">{fmtNum(maxStock)} {item.product.unit} in stock</p>
                       </div>
                       <button className="remove-btn" onClick={() => removeFromCart(index)}>✕</button>
                     </div>
@@ -283,8 +350,10 @@ export default function SalePage() {
                             type="number"
                             step="any"
                             className="qty-input"
-                            value={item.quantity}
-                            onChange={(e) => updateQuantity(index, e.target.value)}
+                            value={qtyDrafts[item.product.id] ?? String(item.quantity)}
+                            onChange={(e) => handleQtyInputChange(item, index, e.target.value)}
+                            onBlur={() => handleQtyInputBlur(item, index)}
+                            onFocus={(e) => e.target.select()}
                             min="1"
                             max={maxStock}
                           />
@@ -319,7 +388,7 @@ export default function SalePage() {
               </div>
               <div className="total-label text-right">
                 <p>Total Amount</p>
-                <span className="total-value">₹{totalAmount}</span>
+                <span className="total-value">₹{totalAmount.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -370,7 +439,7 @@ export default function SalePage() {
                     placeholder="Customer Name (Required to save Udhaar)"
                     className="custom-select"
                   />
-                  <p className="udhaar-hint" style={{ color: '#A0A0B8', marginTop: 4 }}>A new Khata will be created automatically.</p>
+                  <p className="udhaar-hint" style={{ color: '#A0A0B8', marginTop: 4 }}>A new ledger entry will be created automatically.</p>
                 </div>
               )}
               
@@ -379,22 +448,22 @@ export default function SalePage() {
                   type="number" 
                   value={amountPaid} 
                   onChange={(e) => setAmountPaid(e.target.value)}
-                  placeholder={`Enter amount paid (Total: ₹${totalAmount})`}
+                  placeholder={`Enter amount paid (Total: ₹${totalAmount.toFixed(2)})`}
                   className="custom-select"
                   style={{ marginTop: 12 }}
                 />
               )}
               
               {paymentStatus === 'partial' && amountPaid !== '' && Number(amountPaid) < totalAmount && (
-                <p className="udhaar-hint">₹{totalAmount - Number(amountPaid)} will be added to Khata.</p>
+                <p className="udhaar-hint">₹{(totalAmount - Number(amountPaid)).toFixed(2)} will be added to ledger.</p>
               )}
               
               {paymentStatus === 'partial' && amountPaid !== '' && Number(amountPaid) > totalAmount && (
-                <p className="udhaar-hint" style={{ color: '#22C55E' }}>₹{Number(amountPaid) - totalAmount} Excess (Advance) will be credited to Khata.</p>
+                <p className="udhaar-hint" style={{ color: 'var(--color-success)' }}>₹{(Number(amountPaid) - totalAmount).toFixed(2)} Excess (Advance) will be credited to ledger.</p>
               )}
               
               {paymentStatus === 'full_udhaar' && (
-                <p className="udhaar-hint" style={{ marginTop: 8 }}>Entire ₹{totalAmount} will be added to Khata.</p>
+                <p className="udhaar-hint" style={{ marginTop: 8 }}>Entire ₹{totalAmount.toFixed(2)} will be added to ledger.</p>
               )}
             </div>
             
@@ -412,120 +481,120 @@ export default function SalePage() {
               size="lg"
               style={{ marginTop: 16 }}
             >
-              Complete Sale (₹{totalAmount})
+              Complete Sale (₹{totalAmount.toFixed(2)})
             </Button>
           </div>
         )}
       </div>
 
       <style jsx>{`
-        .sale-page { min-height: 100dvh; background: var(--bg-primary); padding-bottom: 88px; color: white; }
+        .sale-page { min-height: 100dvh; background: var(--bg-primary); padding-bottom: 88px; color: var(--text-primary); }
         .sale-content { max-width: 480px; margin: 0 auto; padding: 16px; }
         .header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-top: 8px; }
-        .back-btn { background: rgba(255,255,255,0.05); border: none; width: 40px; height: 40px; border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .back-btn { background: var(--bg-surface-hover); border: none; width: 40px; height: 40px; border-radius: 12px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .header h1 { font-size: 24px; font-weight: 700; margin: 0; flex: 1; }
         .header-total { text-align: right; }
-        .header-total-label { font-size: 11px; color: #A0A0B8; display: block; }
-        .header-total-amount { font-size: 18px; font-weight: 800; color: #22C55E; }
+        .header-total-label { font-size: 11px; color: var(--text-secondary); display: block; }
+        .header-total-amount { font-size: 18px; font-weight: 800; color: var(--text-primary); }
         
-        .error-banner { background: rgba(239, 68, 68, 0.1); color: #EF4444; padding: 12px; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.2); margin-bottom: 16px; font-size: 14px; text-align: center; }
+        .error-banner { background: var(--bg-red-subtle); color: var(--color-danger); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 16px; font-size: 14px; text-align: center; }
 
-        .card { background: #252540; border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.04); }
-        .card h2 { font-size: 14px; margin-top: 0; margin-bottom: 14px; color: #6B6B80; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card { background: var(--bg-surface-solid); border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1px solid var(--border-color); }
+        .card h2 { font-size: 14px; margin-top: 0; margin-bottom: 14px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
         
         .product-grid { display: flex; flex-wrap: wrap; gap: 8px; }
         .product-chip {
           position: relative;
           display: flex; flex-direction: column; align-items: center; gap: 4px;
           padding: 12px 14px; min-width: 80px;
-          background: rgba(0,0,0,0.2); border: 1.5px solid rgba(255,255,255,0.06);
-          border-radius: 12px; color: white; cursor: pointer;
+          background: var(--bg-surface-subtle); border: 1.5px solid var(--border-color);
+          border-radius: 12px; color: var(--text-primary); cursor: pointer;
           transition: all 0.15s ease;
         }
         .product-chip:active { transform: scale(0.95); }
-        .product-chip.in-cart { border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.08); }
+        .product-chip.in-cart { border-color: var(--icon-active); background: var(--bg-purple-subtle); }
         .product-chip.out-of-stock { opacity: 0.4; cursor: not-allowed; }
         .chip-name { font-size: 13px; font-weight: 600; text-align: center; }
-        .chip-price { font-size: 11px; color: #A0A0B8; }
-        .chip-stock { font-size: 10px; color: #6B6B80; }
+        .chip-price { font-size: 11px; color: var(--text-secondary); }
+        .chip-stock { font-size: 10px; color: var(--text-muted); }
         .chip-badge {
           position: absolute; top: -6px; right: -6px;
           width: 22px; height: 22px; border-radius: 50%;
-          background: #22C55E; color: white;
+          background: var(--text-primary); color: var(--bg-primary);
           font-size: 11px; font-weight: 700;
           display: flex; align-items: center; justify-content: center;
         }
         .search-input {
           width: 100%; padding: 10px 14px; margin-bottom: 12px;
-          background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 10px; color: white; font-size: 14px; outline: none;
+          background: var(--bg-input); border: 1px solid var(--border-color);
+          border-radius: 10px; color: var(--text-primary); font-size: 14px; outline: none;
         }
         .search-input:focus { border-color: #7B42C4; }
-        .search-input::placeholder { color: #6B6B80; }
-        .no-results { color: #6B6B80; font-size: 13px; text-align: center; padding: 16px; width: 100%; }
+        .search-input::placeholder { color: var(--text-muted); }
+        .no-results { color: var(--text-muted); font-size: 13px; text-align: center; padding: 16px; width: 100%; }
         
         .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-        .input-group label { font-size: 13px; color: #A0A0B8; }
+        .input-group label { font-size: 13px; color: var(--text-secondary); }
 
         .custom-select { 
-          width: 100%; padding: 12px 14px; background: rgba(0,0,0,0.2); 
-          border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; 
-          color: white; font-size: 15px; outline: none; transition: border-color 0.2s;
+          width: 100%; padding: 12px 14px; background: var(--bg-input); 
+          border: 1px solid var(--border-color); border-radius: 10px; 
+          color: var(--text-primary); font-size: 15px; outline: none; transition: border-color 0.2s;
         }
         .custom-select:focus { border-color: #7B42C4; }
         
-        .highlight-box { background: rgba(123,66,196,0.1); padding: 12px; border-radius: 12px; border: 1px dashed rgba(123,66,196,0.3); }
+        .highlight-box { background: var(--bg-purple-subtle); padding: 12px; border-radius: 12px; border: 1px dashed rgba(123,66,196,0.3); }
         .payment-modes { display: flex; gap: 8px; margin-top: 4px; }
-        .pmode-btn { flex: 1; padding: 10px 4px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: #A0A0B8; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .pmode-btn.active { background: #7B42C4; color: white; border-color: #7B42C4; }
-        .udhaar-hint { font-size: 12px; color: #EF4444; margin-top: 6px; font-weight: 600; }
+        .pmode-btn { flex: 1; padding: 10px 4px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-surface-subtle); color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .pmode-btn.active { background: #7B42C4; color: #FFFFFF; border-color: #7B42C4; }
+        .udhaar-hint { font-size: 12px; color: var(--color-danger); margin-top: 6px; font-weight: 600; }
         
         .cart-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
-        .cart-item { padding: 12px; background: rgba(0,0,0,0.2); border-radius: 12px; }
+        .cart-item { padding: 12px; background: var(--bg-surface-subtle); border-radius: 12px; }
         .cart-item-row1 { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
         .cart-item-info { flex: 1; min-width: 0; }
         .item-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .item-stock { font-size: 11px; color: #6B6B80; }
+        .item-stock { font-size: 11px; color: var(--text-muted); }
         .cart-item-row2 { display: flex; gap: 10px; align-items: flex-end; }
         .qty-section { flex: 1; }
         .total-section { flex: 1; }
-        .field-label { display: block; font-size: 10px; color: #6B6B80; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .orig-price { text-decoration: line-through; color: #EF4444; font-size: 10px; margin-left: 4px; }
+        .field-label { display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .orig-price { text-decoration: line-through; color: var(--color-danger); font-size: 10px; margin-left: 4px; }
         .cart-item-controls { display: flex; align-items: center; gap: 2px; }
         .qty-btn {
           width: 28px; height: 32px; border-radius: 8px;
-          background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-          color: white; font-size: 16px; cursor: pointer;
+          background: var(--bg-surface-hover); border: 1px solid var(--border-color);
+          color: var(--text-primary); font-size: 16px; cursor: pointer;
           display: flex; align-items: center; justify-content: center;
           transition: background 0.15s; flex-shrink: 0;
         }
-        .qty-btn:active { background: rgba(255,255,255,0.15); }
+        .qty-btn:active { background: var(--bg-input); }
         .qty-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         .qty-input {
           width: 40px; height: 32px; text-align: center; font-size: 14px; font-weight: 700;
-          background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
-          color: white; outline: none;
+          background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px;
+          color: var(--text-primary); outline: none;
         }
         .qty-input:focus { border-color: #7B42C4; }
         .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
         .price-input {
           width: 100%; height: 32px; text-align: center; font-size: 14px; font-weight: 700;
-          background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
-          color: white; outline: none;
+          background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px;
+          color: var(--text-primary); outline: none;
         }
         .price-input:focus { border-color: #7B42C4; }
         .price-input::-webkit-inner-spin-button { -webkit-appearance: none; }
-        .total-input { color: #22C55E; }
-        .remove-btn { background: rgba(239,68,68,0.1); color: #EF4444; border: none; cursor: pointer; font-size: 12px; width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+        .total-input { color: var(--text-primary); }
+        .remove-btn { background: var(--bg-red-subtle); color: var(--color-danger); border: none; cursor: pointer; font-size: 12px; width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
         .remove-btn:hover { background: rgba(239,68,68,0.2); }
         
-        .cart-total { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px dashed rgba(255,255,255,0.1); }
-        .total-label p { font-size: 12px; color: #A0A0B8; margin-bottom: 4px; }
-        .total-label span { font-size: 18px; font-weight: 700; color: white; }
-        .total-value { color: #22C55E !important; font-size: 22px !important; font-weight: 800 !important; }
+        .cart-total { display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px dashed var(--border-color); }
+        .total-label p { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+        .total-label span { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+        .total-value { color: var(--text-primary) !important; font-size: 22px !important; font-weight: 800 !important; }
         .text-right { text-align: right; }
 
-        .loading { color: white; text-align: center; padding: 40px; }
+        .loading { color: var(--text-primary); text-align: center; padding: 40px; }
       `}</style>
     </div>
   );

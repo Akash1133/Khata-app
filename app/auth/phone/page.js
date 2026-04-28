@@ -114,12 +114,12 @@ export default function PhonePage() {
         .auth-title {
           font-size: 24px;
           font-weight: 700;
-          color: white;
+          color: var(--text-primary);
           margin-bottom: 8px;
         }
         .auth-desc {
           font-size: 15px;
-          color: #6B6B80;
+          color: var(--text-muted);
           line-height: 1.5;
         }
         .auth-form {
@@ -133,7 +133,7 @@ export default function PhonePage() {
           align-items: center;
           gap: 8px;
           font-size: 13px;
-          color: #6B6B80;
+          color: var(--text-muted);
           padding: 10px 14px;
           background: rgba(123,66,196,0.08);
           border-radius: 10px;
