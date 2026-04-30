@@ -10,9 +10,11 @@ export default function KhataPage() {
   const router = useRouter();
   const [parties, setParties] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all'); // 'all' | 'give' | 'get'
   
   // Add Party Modal
   const [showAdd, setShowAdd] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [newParty, setNewParty] = useState({ name: '', phone: '', type: 'customer' });
 
   useEffect(() => {
@@ -27,15 +29,26 @@ export default function KhataPage() {
 
   const handleAddParty = async (e) => {
     e.preventDefault();
-    if (!newParty.name) return;
-    await PartyStore.add(newParty);
-    setShowAdd(false);
-    setNewParty({ name: '', phone: '', type: 'customer' });
-    loadParties();
+    if (!newParty.name || isSaving) return;
+    setIsSaving(true);
+    try {
+      await PartyStore.add(newParty);
+      setShowAdd(false);
+      setNewParty({ name: '', phone: '', type: 'customer' });
+      loadParties();
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const totalOwedToUs = parties.filter(p => p.balance > 0).reduce((sum, p) => sum + p.balance, 0);
   const totalWeOwe = parties.filter(p => p.balance < 0).reduce((sum, p) => sum + Math.abs(p.balance), 0);
+
+  const filteredParties = parties.filter(p => {
+    if (filter === 'give') return p.balance < 0;
+    if (filter === 'get') return p.balance > 0;
+    return true;
+  });
 
   return (
     <div className="khata-page">
@@ -49,11 +62,17 @@ export default function KhataPage() {
         </div>
 
         <div className="summary-cards">
-          <div className="sum-card green">
+          <div 
+            className={`sum-card red ${filter === 'give' ? 'active-filter' : ''}`}
+            onClick={() => setFilter(filter === 'give' ? 'all' : 'give')}
+          >
             <p>You will give</p>
             <h3>₹{totalWeOwe}</h3>
           </div>
-          <div className="sum-card red">
+          <div 
+            className={`sum-card green ${filter === 'get' ? 'active-filter' : ''}`}
+            onClick={() => setFilter(filter === 'get' ? 'all' : 'get')}
+          >
             <p>You will get</p>
             <h3>₹{totalOwedToUs}</h3>
           </div>
@@ -67,9 +86,15 @@ export default function KhataPage() {
             <p>No parties added yet.</p>
             <Button onClick={() => setShowAdd(true)} style={{ marginTop: 16 }}>Add First Party</Button>
           </div>
+        ) : filteredParties.length === 0 ? (
+          <div className="empty">
+            <p className="empty-icon">🔍</p>
+            <p>No parties match this filter.</p>
+            <Button onClick={() => setFilter('all')} style={{ marginTop: 16 }}>Show All</Button>
+          </div>
         ) : (
           <div className="party-list">
-            {parties.map(p => (
+            {filteredParties.map(p => (
               <div key={p.id} className="party-card" onClick={() => router.push(`/khata/${p.id}`)}>
                 <div className="party-avatar">{p.name.charAt(0).toUpperCase()}</div>
                 <div className="party-info">
@@ -80,9 +105,9 @@ export default function KhataPage() {
                   {p.balance === 0 ? (
                     <span className="bal-settled">Settled</span>
                   ) : p.balance > 0 ? (
-                    <span className="bal-get">₹{p.balance} <small>Advance/Due</small></span>
+                    <span className="bal-get">₹{p.balance} <small>You will get</small></span>
                   ) : (
-                    <span className="bal-give">₹{Math.abs(p.balance)} <small>Advance/Due</small></span>
+                    <span className="bal-give">₹{Math.abs(p.balance)} <small>You will give</small></span>
                   )}
                 </div>
               </div>
@@ -103,12 +128,12 @@ export default function KhataPage() {
                     <button type="button" className={newParty.type === 'supplier' ? 'active' : ''} onClick={() => setNewParty({...newParty, type: 'supplier'})}>Supplier</button>
                   </div>
                 </div>
-                <Input label="Name" value={newParty.name} onChange={e => setNewParty({...newParty, name: e.target.value})} autoFocus />
+                <Input label="Name *" value={newParty.name} onChange={e => setNewParty({...newParty, name: e.target.value})} autoFocus />
                 <Input label="Phone (Optional)" value={newParty.phone} onChange={e => setNewParty({...newParty, phone: e.target.value})} />
                 
                 <div className="modal-actions">
                   <button type="button" className="cancel-btn" onClick={() => setShowAdd(false)}>Cancel</button>
-                  <Button type="submit">Save</Button>
+                  <Button type="submit" loading={isSaving}>Save</Button>
                 </div>
               </form>
             </div>
@@ -124,9 +149,12 @@ export default function KhataPage() {
         .header h1 { font-size: 24px; font-weight: 700; margin: 0; }
         
         .summary-cards { display: flex; gap: 12px; margin-bottom: 24px; }
-        .sum-card { flex: 1; padding: 16px; border-radius: 16px; background: var(--bg-surface-solid); border: 1px solid rgba(255,255,255,0.04); }
+        .sum-card { flex: 1; padding: 16px; border-radius: 16px; background: var(--bg-surface-solid); border: 1px solid rgba(255,255,255,0.04); cursor: pointer; transition: all 0.2s; }
+        .sum-card:active { transform: scale(0.97); }
         .sum-card.green { border-left: 4px solid var(--color-success); }
+        .sum-card.green.active-filter { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); border-left: 4px solid var(--color-success); }
         .sum-card.red { border-left: 4px solid var(--color-danger); }
+        .sum-card.red.active-filter { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-left: 4px solid var(--color-danger); }
         .sum-card p { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
         .sum-card h3 { font-size: 22px; font-weight: 800; }
         .sum-card.green h3 { color: var(--color-success); }
@@ -140,8 +168,8 @@ export default function KhataPage() {
         .party-type { font-size: 12px; color: var(--text-muted); text-transform: capitalize; }
         .party-bal { text-align: right; }
         .bal-settled { color: var(--text-secondary); font-size: 13px; font-weight: 500; }
-        .bal-get { color: var(--color-danger); font-size: 15px; font-weight: 700; display: flex; flex-direction: column; }
-        .bal-give { color: var(--color-success); font-size: 15px; font-weight: 700; display: flex; flex-direction: column; }
+        .bal-get { color: var(--color-success); font-size: 15px; font-weight: 700; display: flex; flex-direction: column; }
+        .bal-give { color: var(--color-danger); font-size: 15px; font-weight: 700; display: flex; flex-direction: column; }
         .party-bal small { font-size: 10px; font-weight: 500; opacity: 0.8; }
 
         .loading, .empty { text-align: center; padding: 40px; color: var(--text-secondary); }

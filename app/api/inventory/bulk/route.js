@@ -70,31 +70,63 @@ export async function POST(request) {
 
     const existing = await prisma.product.findMany({
       where: { userId },
-      select: { name: true }
-    });
-    const existingNames = new Set(existing.map((p) => p.name.toLowerCase()));
-    const conflict = normalized.find((p) => existingNames.has(p.name.toLowerCase()));
-    if (conflict) {
-      return NextResponse.json({ error: `Product already exists: ${conflict.name}` }, { status: 409 });
-    }
-
-    const data = normalized.map(p => ({
-      name: p.name,
-      category: p.category || 'General',
-      unit: p.unit || 'pcs',
-      quantity: Number.isFinite(p.quantity) ? p.quantity : 0,
-      buyPrice: Number.isFinite(p.buyPrice) ? p.buyPrice : 0,
-      sellPrice: Number.isFinite(p.sellPrice) ? p.sellPrice : 0,
-      lowStockThreshold: Number.isFinite(p.lowStockThreshold) ? p.lowStockThreshold : 0,
-      userId,
-    }));
-
-    const result = await prisma.product.createMany({
-      data
+      select: { id: true, name: true, quantity: true }
     });
     
-    return NextResponse.json({ success: true, count: result.count }, { status: 201 });
+    // Create a map for quick lookup by lowercased name
+    const existingMap = new Map();
+    existing.forEach(p => existingMap.set(p.name.toLowerCase(), p));
+
+    const createData = [];
+    const updateOperations = [];
+
+    for (const p of normalized) {
+      const existingProduct = existingMap.get(p.name.toLowerCase());
+      
+      const payload = {
+        name: p.name,
+        category: p.category || 'General',
+        unit: p.unit || 'pcs',
+        buyPrice: Number.isFinite(p.buyPrice) ? p.buyPrice : 0,
+        sellPrice: Number.isFinite(p.sellPrice) ? p.sellPrice : 0,
+        lowStockThreshold: Number.isFinite(p.lowStockThreshold) ? p.lowStockThreshold : 0,
+      };
+
+      if (existingProduct) {
+        // If it exists, we update the fields and ADD the quantity
+        updateOperations.push(
+          prisma.product.update({
+            where: { id: existingProduct.id },
+            data: {
+              ...payload,
+              quantity: {
+                increment: Number.isFinite(p.quantity) ? p.quantity : 0
+              }
+            }
+          })
+        );
+      } else {
+        // If it's new, we create it
+        createData.push({
+          ...payload,
+          quantity: Number.isFinite(p.quantity) ? p.quantity : 0,
+          userId,
+        });
+      }
+    }
+
+    const transactions = [];
+    if (createData.length > 0) {
+      transactions.push(prisma.product.createMany({ data: createData }));
+    }
+    if (updateOperations.length > 0) {
+      transactions.push(...updateOperations);
+    }
+
+    await prisma.$transaction(transactions);
+    
+    return NextResponse.json({ success: true, count: normalized.length }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to bulk create products' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to bulk create/update products' }, { status: 500 });
   }
 }

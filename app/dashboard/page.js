@@ -10,6 +10,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [stats, setStats] = useState({ todaySales: 0, monthSales: 0, totalProducts: 0, lowStock: 0 });
   const [transactions, setTransactions] = useState([]);
+  const [showBalances, setShowBalances] = useState(false);
 
 
   // Replaced manual month series with getDailyStats from store
@@ -57,12 +58,14 @@ export default function DashboardPage() {
 
   const quickActions = [
     { emoji: '➕', label: 'Add Sale', color: 'var(--icon-active)', href: '/sale' },
-    { emoji: '📦', label: 'Stock', color: '#4A6CF7', href: '/inventory' },
+    { emoji: '📦', label: 'Inventory', color: '#4A6CF7', href: '/inventory' },
+    { emoji: '🛒', label: 'Buy Stock', color: '#10B981', href: '/purchase' },
     { emoji: '📒', label: 'Ledger', color: '#F97316', href: '/khata' },
     { emoji: '📊', label: 'P&L', color: '#EC4899', href: '/pl' },
   ];
 
   const formatCurrency = (n) => {
+    if (!showBalances) return '₹ ****';
     if (n >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
     if (n >= 1000) return `₹${(n / 1000).toFixed(2)}K`;
     return `₹${Number(n).toFixed(2)}`;
@@ -84,15 +87,38 @@ export default function DashboardPage() {
 
         {/* Stats Cards */}
         <div className="stats-grid">
-          <Card variant="gradient" padding="md" animate>
-            <p className="stat-label">Today&apos;s Sales</p>
+          <Card
+            variant="gradient"
+            padding="md"
+            animate
+            onClick={() => router.push('/history?filter=sale&period=today')}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <p className="stat-label">Today&apos;s Sales</p>
+              <span onClick={(e) => { e.stopPropagation(); setShowBalances(!showBalances); }} style={{cursor: 'pointer', opacity: 0.7, display: 'flex', alignItems: 'center'}}>
+                {showBalances ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                )}
+              </span>
+            </div>
             <p className="stat-value stat-green">{formatCurrency(stats.todaySales)}</p>
           </Card>
           <Card variant="gradient" padding="md" animate onClick={() => router.push('/analytics')}>
-            <p className="stat-label">This Month <span style={{fontSize:'10px'}}>▼</span></p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <p className="stat-label">This Month <span style={{fontSize:'10px'}}>▼</span></p>
+              <span onClick={(e) => { e.stopPropagation(); setShowBalances(!showBalances); }} style={{cursor: 'pointer', opacity: 0.7, display: 'flex', alignItems: 'center'}}>
+                {showBalances ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                )}
+              </span>
+            </div>
             <p className="stat-value stat-blue">{formatCurrency(stats.monthSales)}</p>
           </Card>
-          <Card padding="md" animate>
+          <Card padding="md" animate onClick={() => router.push('/inventory')}>
             <p className="stat-label">Products</p>
             <p className="stat-value">{stats.totalProducts}</p>
           </Card>
@@ -214,7 +240,7 @@ export default function DashboardPage() {
 
         .actions-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(3, 1fr);
           gap: 12px;
         }
         .action-btn {

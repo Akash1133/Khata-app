@@ -8,6 +8,14 @@ import Input from '../components/Input';
 
 export default function SalePage() {
   const router = useRouter();
+  const getLocalDateInputValue = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const todayStr = getLocalDateInputValue();
   const [products, setProducts] = useState([]);
   const [parties, setParties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,12 +26,14 @@ export default function SalePage() {
   // Sale items list
   const [cart, setCart] = useState([]);
   const [qtyDrafts, setQtyDrafts] = useState({});
+  const [totalDrafts, setTotalDrafts] = useState({});
   
   // Checkout State
   const [selectedParty, setSelectedParty] = useState('');
   const [newPartyName, setNewPartyName] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('full_paid'); // full_paid, partial, full_udhaar
   const [amountPaid, setAmountPaid] = useState('');
+  const [saleDate, setSaleDate] = useState(todayStr);
   const [note, setNote] = useState('');
   const [search, setSearch] = useState('');
   const fmtNum = (v) => {
@@ -35,6 +45,17 @@ export default function SalePage() {
     const n = Number(v);
     if (!Number.isFinite(n)) return '0';
     return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(2)));
+  };
+  const normalizeDecimalInput = (v) => {
+    if (v === '') return '';
+    if (v.startsWith('.')) return `0${v}`;
+    if (v.includes('.')) {
+      const [intPart, fracPart] = v.split('.');
+      const cleanInt = intPart.replace(/^0+(?=\d)/, '') || '0';
+      const trimmedFrac = (fracPart ?? '').slice(0, 2);
+      return `${cleanInt}.${trimmedFrac}`;
+    }
+    return v.replace(/^0+(?=\d)/, '');
   };
 
   useEffect(() => {
@@ -81,9 +102,9 @@ export default function SalePage() {
     const total = Number(newTotal);
     if (isNaN(total) || total < 0) return;
     const newCart = [...cart];
-    newCart[index].customTotal = total;
+    newCart[index].customTotal = Math.round(total * 100) / 100;
     if (newCart[index].quantity > 0) {
-      newCart[index].price = Math.round((total / newCart[index].quantity) * 100) / 100;
+      newCart[index].price = Math.round((newCart[index].customTotal / newCart[index].quantity) * 100) / 100;
     }
     setCart(newCart);
   };
@@ -97,23 +118,17 @@ export default function SalePage() {
         delete next[item.product.id];
         return next;
       });
+      setTotalDrafts((prev) => {
+        const next = { ...prev };
+        delete next[item.product.id];
+        return next;
+      });
     }
   };
 
   const handleQtyInputChange = (item, index, rawValue) => {
     const productId = item.product.id;
-    const normalizeQtyInput = (v) => {
-      if (v === '') return '';
-      // Keep decimal typing usable, but remove unnecessary leading zeros.
-      if (v.startsWith('.')) return `0${v}`;
-      if (v.includes('.')) {
-        const [intPart, fracPart] = v.split('.');
-        const cleanInt = intPart.replace(/^0+(?=\d)/, '');
-        return `${cleanInt}.${fracPart ?? ''}`;
-      }
-      return v.replace(/^0+(?=\d)/, '');
-    };
-    const normalized = normalizeQtyInput(rawValue);
+    const normalized = normalizeDecimalInput(rawValue);
     setQtyDrafts((prev) => ({ ...prev, [productId]: normalized }));
     if (normalized === '') return;
     const qty = Number(normalized);
@@ -141,6 +156,40 @@ export default function SalePage() {
 
     updateQuantity(index, qty);
     setQtyDrafts((prev) => {
+      const next = { ...prev };
+      delete next[productId];
+      return next;
+    });
+  };
+
+  const handleTotalInputChange = (item, index, rawValue) => {
+    const productId = item.product.id;
+    const normalized = normalizeDecimalInput(rawValue);
+    setTotalDrafts((prev) => ({ ...prev, [productId]: normalized }));
+    if (normalized === '') return;
+    const total = Number(normalized);
+    if (Number.isNaN(total) || total < 0) return;
+    updateTotalPrice(index, total);
+  };
+
+  const handleTotalInputBlur = (item, index) => {
+    const productId = item.product.id;
+    const draft = totalDrafts[productId];
+    if (draft === undefined) return;
+    const trimmed = String(draft).trim();
+    if (trimmed === '') {
+      setTotalDrafts((prev) => {
+        const next = { ...prev };
+        delete next[productId];
+        return next;
+      });
+      return;
+    }
+    const total = Number(trimmed);
+    if (!Number.isNaN(total) && total >= 0) {
+      updateTotalPrice(index, total);
+    }
+    setTotalDrafts((prev) => {
       const next = { ...prev };
       delete next[productId];
       return next;
@@ -178,6 +227,7 @@ export default function SalePage() {
       type: 'sale',
       amount: totalAmount,
       note: note || 'Point of Sale',
+      date: `${saleDate}T12:00:00`,
       partyId: selectedParty || null,
       newPartyName: (!selectedParty && isUdhaar) ? newPartyName.trim() : null,
       amountPaid: computedAmountPaid,
@@ -195,10 +245,12 @@ export default function SalePage() {
         totalItems: totalItemsCount,
         amountPaid: computedAmountPaid,
         items: cart.map(c => ({ name: c.product.name, qty: c.quantity, price: c.price })),
-        partyName: selectedParty ? parties.find(p => p.id === selectedParty)?.name : (newPartyName || 'Walk-in Customer')
+        partyName: selectedParty ? parties.find(p => p.id === selectedParty)?.name : (newPartyName || 'Walk-in Customer'),
+        saleDate
       });
       setCart([]);
       setNote('');
+      setSaleDate(todayStr);
       setSelectedParty('');
       setNewPartyName('');
       setAmountPaid('');
@@ -241,6 +293,10 @@ export default function SalePage() {
             <div className="success-row">
               <span>Customer</span>
               <span className="success-val">{successData.partyName}</span>
+            </div>
+            <div className="success-row">
+              <span>Sale Date</span>
+              <span className="success-val">{new Date(`${successData.saleDate}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             </div>
             <div className="success-divider" />
             {successData.items.map((item, i) => (
@@ -372,8 +428,10 @@ export default function SalePage() {
                           type="number"
                           step="any"
                           className="price-input total-input"
-                          value={lineTotal}
-                          onChange={(e) => updateTotalPrice(index, e.target.value)}
+                          value={totalDrafts[item.product.id] ?? fmtPrice(lineTotal)}
+                          onChange={(e) => handleTotalInputChange(item, index, e.target.value)}
+                          onBlur={() => handleTotalInputBlur(item, index)}
+                          onFocus={(e) => e.target.select()}
                         />
                       </div>
                     </div>
@@ -398,6 +456,13 @@ export default function SalePage() {
         {cart.length > 0 && (
           <div className="card">
             <h2>Checkout</h2>
+            <Input
+              label="Sale Date"
+              type="date"
+              value={saleDate}
+              onChange={(e) => setSaleDate(e.target.value)}
+              max={todayStr}
+            />
             <div className="input-group">
               <label>Customer (Party)</label>
               <select 
@@ -410,7 +475,7 @@ export default function SalePage() {
                 className="custom-select"
               >
                 <option value="">Walk-in Customer</option>
-                {parties.map(p => (
+                {parties.filter(p => p.type === 'customer').map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>

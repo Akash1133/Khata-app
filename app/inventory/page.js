@@ -46,9 +46,11 @@ export default function InventoryPage() {
             <p className="inv-subtitle">{products.length} products · ₹{totalValue.toFixed(2)} value</p>
           </div>
           <div className="inv-header-actions">
-            <button className="add-btn-icon" onClick={() => router.push('/inventory/bulk')} title="Bulk Add">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-            </button>
+            <Button size="sm" variant="secondary" onClick={() => router.push('/inventory/add?mode=update')}
+              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>}
+            >
+              Bulk Update
+            </Button>
             <Button size="sm" onClick={() => router.push('/inventory/add')} id="add-product-btn"
               icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>}
             >
@@ -56,6 +58,7 @@ export default function InventoryPage() {
             </Button>
           </div>
         </div>
+
 
         {/* Search */}
         <div className="search-bar">
@@ -92,7 +95,7 @@ export default function InventoryPage() {
             {products.length === 0 && (
               <div className="empty-actions">
                 <Button size="sm" onClick={() => router.push('/inventory/add')}>Add Product</Button>
-                <Button size="sm" variant="secondary" onClick={() => router.push('/inventory/bulk')}>Bulk Add</Button>
+                <Button size="sm" variant="secondary" onClick={() => router.push('/inventory/add?mode=update')}>Bulk Update</Button>
               </div>
             )}
           </div>
@@ -165,6 +168,57 @@ export default function InventoryPage() {
           color: var(--text-secondary); cursor: pointer; transition: all 0.2s;
         }
         .add-btn-icon:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+
+        .stock-cta {
+          width: 100%;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 14px;
+          padding: 16px 18px;
+          margin-bottom: 16px;
+          border-radius: 16px;
+          border: 1px solid rgba(16,185,129,0.22);
+          background: linear-gradient(135deg, rgba(16,185,129,0.14), rgba(59,130,246,0.08));
+          color: var(--text-primary);
+          cursor: pointer;
+          text-align: left;
+          transition: transform 0.18s ease, border-color 0.18s ease;
+        }
+        .stock-cta:hover {
+          transform: translateY(-1px);
+          border-color: rgba(16,185,129,0.36);
+        }
+        .stock-cta-copy { min-width: 0; }
+        .stock-cta-title {
+          font-size: 16px;
+          font-weight: 700;
+          color: var(--text-primary);
+          margin-bottom: 4px;
+        }
+        .stock-cta-sub {
+          font-size: 13px;
+          color: var(--text-secondary);
+        }
+        .stock-cta-meta {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-shrink: 0;
+        }
+        .stock-cta-pill {
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: rgba(255,255,255,0.10);
+          font-size: 11px;
+          font-weight: 700;
+          color: #34D399;
+        }
+        .stock-cta-arrow {
+          font-size: 18px;
+          font-weight: 700;
+          color: #34D399;
+        }
 
         .search-bar {
           display: flex; align-items: center; gap: 10px;

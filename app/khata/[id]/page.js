@@ -17,6 +17,7 @@ export default function PartyDetailsPage({ params }) {
   const [paymentType, setPaymentType] = useState('payment_in');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [savingEntry, setSavingEntry] = useState(false);
 
   useEffect(() => {
     loadParty();
@@ -38,12 +39,15 @@ export default function PartyDetailsPage({ params }) {
       default: return 'Manual Entry';
     }
   };
+  const isYouGot = (type) => type === 'purchase' || type === 'payment_in';
 
   const handlePayment = async (e) => {
     e.preventDefault();
+    if (savingEntry) return;
     if (!amount || Number(amount) <= 0) return;
 
-    await TransactionStore.add({
+    setSavingEntry(true);
+    const result = await TransactionStore.add({
       type: paymentType,
       amount: Number(amount),
       note: note || getNoteForType(paymentType),
@@ -51,10 +55,21 @@ export default function PartyDetailsPage({ params }) {
       items: [] // Manual entries don't involve inventory items directly
     });
 
-    setShowPayment(false);
-    setAmount('');
-    setNote('');
-    loadParty(); // Reload to get updated balance and history
+    if (result?.success) {
+      setShowPayment(false);
+      setAmount('');
+      setNote('');
+      await loadParty(); // Reload to get updated balance and history
+    }
+    setSavingEntry(false);
+  };
+
+  const getEntryTitle = () => {
+    if (paymentType === 'sale') return 'Add Due';
+    if (paymentType === 'purchase') return 'Add Bill';
+    if (paymentType === 'payment_in') return 'Payment Received';
+    if (paymentType === 'payment_out') return 'Payment Given';
+    return 'Ledger Entry';
   };
 
   if (loading || !party) return <div className="loading">Loading...</div>;
@@ -86,7 +101,7 @@ export default function PartyDetailsPage({ params }) {
         <div className="action-row">
           {party.type === 'customer' ? (
             <>
-              <button className="action-btn red-btn" onClick={() => { setPaymentType('sale'); setShowPayment(true); }}>
+              <button className="action-btn green-btn" onClick={() => { setPaymentType('sale'); setShowPayment(true); }}>
                 Add Due<br/><small>(To Take)</small>
               </button>
               <button className="action-btn green-btn" onClick={() => { setPaymentType('payment_in'); setShowPayment(true); }}>
@@ -95,7 +110,7 @@ export default function PartyDetailsPage({ params }) {
             </>
           ) : (
             <>
-              <button className="action-btn green-btn" onClick={() => { setPaymentType('purchase'); setShowPayment(true); }}>
+              <button className="action-btn red-btn" onClick={() => { setPaymentType('purchase'); setShowPayment(true); }}>
                 Add Bill<br/><small>(To Give)</small>
               </button>
               <button className="action-btn red-btn" onClick={() => { setPaymentType('payment_out'); setShowPayment(true); }}>
@@ -118,9 +133,9 @@ export default function PartyDetailsPage({ params }) {
                     <p className="txn-date">{new Date(t.date).toLocaleString()}</p>
                     {t.note && <p className="txn-note">{t.note}</p>}
                   </div>
-                  <div className={`txn-amt ${t.type === 'sale' || t.type === 'payment_in' ? 'green' : 'red'}`}>
-                    {t.type === 'sale' || t.type === 'payment_in' ? '+' : '-'}₹{t.amount}
-                  </div>
+                  <div className={`txn-amt ${t.type === 'purchase' || t.type === 'payment_in' ? 'green' : 'red'}`}>
+                  {t.type === 'purchase' || t.type === 'payment_in' ? '+' : '-'}₹{Number(t.amount).toFixed(2)}
+                </div>
                 </div>
               ))}
             </div>
@@ -131,35 +146,12 @@ export default function PartyDetailsPage({ params }) {
         {showPayment && (
           <div className="modal-overlay" onClick={() => setShowPayment(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
-              <h2 className={['payment_in', 'purchase'].includes(paymentType) ? 'green' : 'red'}>
-                Add Ledger Entry
+              <h2 className={isYouGot(paymentType) ? 'green' : 'red'}>
+                {getEntryTitle()}
               </h2>
               <form onSubmit={handlePayment}>
-                <div className="form-group">
-                  <label>Entry Type</label>
-                  <select 
-                    value={paymentType} 
-                    onChange={e => setPaymentType(e.target.value)}
-                    className="custom-select"
-                  >
-                    {party.type === 'customer' ? (
-                      <>
-                        <option value="sale">Add Due (Money to be taken)</option>
-                        <option value="payment_in">Payment Received</option>
-                        <option value="payment_out">Money Given / Refund</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="purchase">Add Bill (Money to be given)</option>
-                        <option value="payment_out">Payment Given</option>
-                        <option value="payment_in">Money Received / Refund</option>
-                      </>
-                    )}
-                  </select>
-                </div>
-
                 <Input 
-                  label="Amount" 
+                  label="Amount *" 
                   type="number" 
                   value={amount} 
                   onChange={e => setAmount(e.target.value)} 
@@ -173,8 +165,8 @@ export default function PartyDetailsPage({ params }) {
                 />
                 
                 <div className="modal-actions">
-                  <button type="button" className="cancel-btn" onClick={() => setShowPayment(false)}>Cancel</button>
-                  <Button type="submit">Save Entry</Button>
+                  <button type="button" className="cancel-btn" onClick={() => setShowPayment(false)} disabled={savingEntry}>Cancel</button>
+                  <Button type="submit" loading={savingEntry} disabled={savingEntry}>Save Entry</Button>
                 </div>
               </form>
             </div>
@@ -193,8 +185,8 @@ export default function PartyDetailsPage({ params }) {
         .balance-card { background: var(--bg-surface-solid); border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.04); }
         .bal-label { font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; }
         .bal-settled { font-size: 28px; color: var(--text-secondary); }
-        .bal-get { font-size: 28px; color: var(--color-danger); }
-        .bal-give { font-size: 28px; color: var(--color-success); }
+        .bal-get { font-size: 28px; color: var(--color-success); }
+        .bal-give { font-size: 28px; color: var(--color-danger); }
         .balance-card small { font-size: 14px; opacity: 0.8; font-weight: 500; display: block; margin-top: 4px; }
 
         .action-row { display: flex; gap: 12px; margin-bottom: 32px; }
@@ -219,14 +211,6 @@ export default function PartyDetailsPage({ params }) {
         .modal-content h2 { font-size: 20px; margin-bottom: 20px; }
         .modal-content h2.green { color: var(--color-success); }
         .modal-content h2.red { color: var(--color-danger); }
-        
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
-        .custom-select { 
-          width: 100%; padding: 12px 14px; background: rgba(0,0,0,0.2); 
-          border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; 
-          color: var(--text-primary); font-size: 14px; outline: none; margin-bottom: 16px;
-        }
         
         .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
         .modal-actions > * { flex: 1; }

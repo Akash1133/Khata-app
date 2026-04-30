@@ -70,6 +70,10 @@ export async function POST(request) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const data = await request.json();
+    const parsedDate = data.date ? new Date(data.date) : null;
+    if (data.date && Number.isNaN(parsedDate?.getTime?.())) {
+      return NextResponse.json({ error: 'Invalid transaction date' }, { status: 400 });
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       // Fetch product details for buyPrice
@@ -94,7 +98,7 @@ export async function POST(request) {
           data: {
             name: data.newPartyName,
             phone: data.newPartyPhone || null,
-            type: 'customer',
+            type: data.newPartyType || (data.type === 'purchase' ? 'supplier' : 'customer'),
             balance: 0,
             userId
           }
@@ -108,6 +112,7 @@ export async function POST(request) {
           type: data.type,
           amount: round2(data.amount),
           note: data.note || null,
+          date: parsedDate || undefined,
           partyId: finalPartyId,
           userId,
           items: {
@@ -159,6 +164,22 @@ export async function POST(request) {
           
           // Balance increases by the unpaid amount (Total Bill - Amount Paid Now)
           balanceChange = totalAmt - paid;
+        } else if (data.type === 'purchase' && data.amountPaid !== undefined && safeNum(data.amountPaid) > 0) {
+          const paid = safeNum(data.amountPaid);
+
+          await tx.transaction.create({
+            data: {
+              type: 'payment_out',
+              amount: paid,
+              note: `Payment given during Purchase #${transaction.id.slice(-6)}`,
+              date: parsedDate || undefined,
+              partyId: finalPartyId,
+              userId,
+            }
+          });
+
+          // Negative means we still owe supplier. Positive means supplier owes us a refund/advance.
+          balanceChange = paid - totalAmt;
         } else {
           // Standard balance logic
           // Balance > 0 means they owe us money. Balance < 0 means we owe them money.
@@ -177,6 +198,9 @@ export async function POST(request) {
       }
 
       return transaction;
+    }, {
+      maxWait: 15000, // 15s wait to connect (for Neon cold starts)
+      timeout: 20000, // 20s timeout for the entire transaction
     });
 
     return NextResponse.json(result, { status: 201 });

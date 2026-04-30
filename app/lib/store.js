@@ -126,6 +126,7 @@ export const UserStore = {
     const user = {
       id: userData.id, // STICK TO SERVER ID
       name: userData.name || 'New User',
+      username: userData.username || '',
       phone: userData.phone,
       email: userData.email || '',
       businessName: userData.businessName || '',
@@ -387,14 +388,13 @@ export const TransactionStore = {
 
   async getMonthTotal() {
     const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    start.setDate(start.getDate() - 29);
     const all = await this.getAll();
     return all
       .filter((t) => {
         const d = new Date(t.date);
-        return (
-          d.getMonth() === now.getMonth() &&
-          d.getFullYear() === now.getFullYear()
-        );
+        return d >= start;
       })
       .reduce((sum, t) => {
         if (t.type === 'sale') return sum + t.amount;

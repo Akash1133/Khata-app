@@ -177,7 +177,7 @@ export default function ProductDetailPage() {
         ) : (
           /* Edit Mode */
           <div className="edit-mode">
-            <Input id="edit-name" label="Product Name" value={form.name} onChange={(e) => update('name', e.target.value)} />
+            <Input id="edit-name" label="Product Name *" value={form.name} onChange={(e) => update('name', e.target.value)} />
             <div className="row-2">
               <div className="sel-grp">
                 <label className="sel-l">Category</label>
@@ -192,10 +192,10 @@ export default function ProductDetailPage() {
                 </select>
               </div>
             </div>
-            <Input id="edit-qty" label="Quantity" type="number" step="any" value={String(form.quantity)} onChange={(e) => update('quantity', e.target.value)} />
+            <Input id="edit-qty" label="Quantity *" type="number" step="any" value={String(form.quantity)} onChange={(e) => update('quantity', e.target.value)} />
             <div className="row-2">
-              <Input id="edit-buy" label="Buy Price (₹)" type="number" prefix="₹" value={String(form.buyPrice)} onChange={(e) => update('buyPrice', e.target.value)} />
-              <Input id="edit-sell" label="Sell Price (₹)" type="number" prefix="₹" value={String(form.sellPrice)} onChange={(e) => update('sellPrice', e.target.value)} />
+              <Input id="edit-buy" label="Buy Price (₹) *" type="number" prefix="₹" value={String(form.buyPrice)} onChange={(e) => update('buyPrice', e.target.value)} />
+              <Input id="edit-sell" label="Sell Price (₹) *" type="number" prefix="₹" value={String(form.sellPrice)} onChange={(e) => update('sellPrice', e.target.value)} />
             </div>
             <Input id="edit-threshold" label="Low Stock Alert" type="number" value={String(form.lowStockThreshold)} onChange={(e) => update('lowStockThreshold', e.target.value)} />
             <Button fullWidth size="lg" loading={loading} onClick={handleSave} id="save-edit-btn">Save Changes</Button>

@@ -1,18 +1,10 @@
 'use client';
 
-// ========== MOCK AUTH HELPERS ==========
-// Simulates OTP authentication until Supabase integration
-
-const OTP_KEY = 'khata_pending_otp';
-const PHONE_KEY = 'khata_pending_phone';
-
 export const AuthService = {
-  // Send OTP
   async sendOtp(phoneNumber) {
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem(PHONE_KEY, phoneNumber);
+      sessionStorage.setItem('khata_pending_phone', phoneNumber);
     }
-    
     try {
       const res = await fetch('/api/auth/send-otp', {
         method: 'POST',
@@ -21,16 +13,14 @@ export const AuthService = {
       });
       const data = await res.json();
       return { success: res.ok, message: data.message || data.error || 'OTP sent successfully' };
-    } catch (error) {
+    } catch {
       return { success: false, message: 'Network error sending OTP' };
     }
   },
 
-  // Verify OTP
   async verifyOtp(enteredOtp) {
-    if (typeof window === 'undefined') return { success: false };
-
-    const phone = sessionStorage.getItem(PHONE_KEY);
+    if (typeof window === 'undefined') return { success: false, message: 'Session unavailable' };
+    const phone = sessionStorage.getItem('khata_pending_phone');
     if (!phone) return { success: false, message: 'Session expired' };
 
     try {
@@ -40,22 +30,61 @@ export const AuthService = {
         body: JSON.stringify({ phoneNumber: phone, otp: enteredOtp })
       });
       const data = await res.json();
-      
-      if (res.ok && data.success) {
-        // Clear pending phone
-        sessionStorage.removeItem(PHONE_KEY);
-        // Return server flags so caller can route new users to setup flow
-        return { success: true, phone, user: data.user, isNewUser: data.isNewUser };
-      }
-      return { success: false, message: data.error || 'Invalid OTP' };
-    } catch (error) {
+      if (!res.ok || !data.success) return { success: false, message: data.error || 'Invalid OTP' };
+      sessionStorage.removeItem('khata_pending_phone');
+      return { success: true, user: data.user, isNewUser: data.isNewUser };
+    } catch {
       return { success: false, message: 'Network error verifying OTP' };
     }
   },
 
-  // Get pending phone number
   getPendingPhone() {
     if (typeof window === 'undefined') return null;
-    return sessionStorage.getItem(PHONE_KEY);
+    return sessionStorage.getItem('khata_pending_phone');
   },
+
+  async login(username, password) {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, message: data.error || 'Login failed' };
+      return { success: true, user: data.user, isNewUser: data.isNewUser };
+    } catch {
+      return { success: false, message: 'Network error while logging in' };
+    }
+  },
+
+  async register({ username, password, name }) {
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, name })
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, message: data.error || 'Signup failed' };
+      return { success: true, user: data.user, isNewUser: data.isNewUser };
+    } catch {
+      return { success: false, message: 'Network error while creating account' };
+    }
+  },
+
+  async loginWithGoogle(credential) {
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential })
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, message: data.error || 'Google sign-in failed' };
+      return { success: true, user: data.user, isNewUser: data.isNewUser };
+    } catch {
+      return { success: false, message: 'Network error with Google sign-in' };
+    }
+  }
 };

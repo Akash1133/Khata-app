@@ -40,7 +40,7 @@ export async function POST(request) {
 
     // Generate a 6 digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const finalOtp = (client && twilioNumber && twilioNumber !== 'your_twilio_phone_number') ? otp : '123456';
+    const finalOtp = (client && twilioNumber && twilioNumber !== 'your_twilio_phone_number') ? otp : '252727';
     
     console.log(`Saving OTP for ${phoneNumber}: ${finalOtp}`);
     

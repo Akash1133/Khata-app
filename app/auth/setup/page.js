@@ -18,6 +18,9 @@ export default function SetupPage() {
   }, []);
   
   const [name, setName] = useState(existingUser.name && existingUser.name !== 'New User' ? existingUser.name : '');
+  const [username, setUsername] = useState(existingUser.username || '');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [email, setEmail] = useState(existingUser.email || '');
   const [businessName, setBusinessName] = useState(existingUser.businessName || '');
   const [loading, setLoading] = useState(false);
@@ -27,12 +30,19 @@ export default function SetupPage() {
     e.preventDefault();
     const newErrors = {};
     if (!name.trim()) newErrors.name = 'Name is required';
+    if (!username.trim()) newErrors.username = 'Username is required';
+    if (password || confirmPassword) {
+      if (password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+      if (password !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
+    }
     if (Object.keys(newErrors).length) { setErrors(newErrors); return; }
 
     setLoading(true);
     try {
       const updated = await UserStore.updateProfile({ 
         name: name.trim(), 
+        username: username.trim().toLowerCase(),
+        password: password || undefined,
         email: email.trim(), 
         businessName: businessName.trim() 
       });
@@ -82,6 +92,38 @@ export default function SetupPage() {
           />
 
           <Input
+            id="setup-username"
+            label="Username *"
+            placeholder="unique username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            error={errors.username}
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B6B80" strokeWidth="2"><path d="M4 4h16v16H4z"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>}
+          />
+
+          <Input
+            id="setup-password"
+            label="Password"
+            type="password"
+            placeholder="Leave blank to keep current"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            error={errors.password}
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B6B80" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
+          />
+
+          <Input
+            id="setup-confirm-password"
+            label="Confirm Password"
+            type="password"
+            placeholder="Repeat password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            error={errors.confirmPassword}
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B6B80" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
+          />
+
+          <Input
             id="setup-email"
             label="Email (for recovery)"
             type="email"
@@ -91,9 +133,9 @@ export default function SetupPage() {
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B6B80" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>}
           />
 
-          <div className="setup-info">
-            <p>📱 You can always update these later from your profile</p>
-          </div>
+        <div className="setup-info">
+          <p>Username can be changed later from your profile. Password is optional unless you want to update it.</p>
+        </div>
 
           <Button id="complete-setup-btn" type="submit" fullWidth size="lg" loading={loading}>
             Complete Setup

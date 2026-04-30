@@ -28,7 +28,35 @@ export default function HistoryPage() {
   const [processing, setProcessing] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const loadData = () => TransactionStore.getAll().then(setTransactions);
+  useEffect(() => {
+    const applyRouteFilters = () => {
+      if (typeof window === 'undefined') return;
+      const params = new URLSearchParams(window.location.search);
+      const nextFilter = params.get('filter');
+      const nextPeriod = params.get('period');
+      const nextSearch = params.get('search');
+      const nextFrom = params.get('from');
+      const nextTo = params.get('to');
+
+      if (nextFilter && ['all', 'sale', 'purchase', 'return', 'payment_in'].includes(nextFilter)) {
+        setFilter(nextFilter);
+      }
+      if (nextPeriod && ['today', 'week', 'month', 'custom'].includes(nextPeriod)) {
+        setPeriod(nextPeriod);
+      }
+      if (nextSearch !== null) setSearch(nextSearch);
+      if (nextFrom !== null) setCustomFrom(nextFrom);
+      if (nextTo !== null) setCustomTo(nextTo);
+    };
+
+    applyRouteFilters();
+    window.addEventListener('popstate', applyRouteFilters);
+    return () => window.removeEventListener('popstate', applyRouteFilters);
+  }, []);
+
+  const loadData = () => TransactionStore.getAll().then(txns => {
+    setTransactions(txns.filter(t => t.type !== 'purchase' && t.type !== 'payment_out'));
+  });
   useEffect(() => {
     loadData();
     const handleVis = () => { if (document.visibilityState === 'visible') loadData(); };
@@ -120,6 +148,7 @@ export default function HistoryPage() {
 
   // Detect auto-generated payment_in notes to hide them
   const isAutoPayment = (t) => t.type === 'payment_in' && t.note && t.note.startsWith('Payment received during Sale');
+  const isAutoReturnNote = (t) => t.type === 'return' && t.note && t.note.startsWith('Return from sale #');
 
   // Find linked payment for a sale transaction
   const getLinkedPayment = (saleTxn) => {
@@ -143,7 +172,9 @@ export default function HistoryPage() {
       return d >= start;
     }
     if (period === 'month') {
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      const start = new Date(startOfToday);
+      start.setDate(start.getDate() - 29);
+      return d >= start;
     }
     if (period === 'custom') {
       if (!customFrom || !customTo) return true;
@@ -173,7 +204,6 @@ export default function HistoryPage() {
   const filters = [
     { key: 'all', label: 'All' },
     { key: 'sale', label: '💰 Sales' },
-    { key: 'purchase', label: '📦 Purchases' },
     { key: 'return', label: '🔄 Returns' },
     { key: 'payment_in', label: '💳 Received' },
   ];
@@ -188,6 +218,19 @@ export default function HistoryPage() {
     if (type === 'purchase') return '📦';
     if (type === 'return') return '🔄';
     return '💳';
+  };
+  const getTypeLabel = (type) => {
+    if (type === 'sale') return 'Sale';
+    if (type === 'purchase') return 'Purchase';
+    if (type === 'return') return 'Return';
+    if (type === 'payment_in') return 'Udhaar Collected';
+    if (type === 'payment_out') return 'Udhaar Paid';
+    return 'Transaction';
+  };
+  const getTransactionTitle = (txn) => {
+    const partyName = txn.party?.name?.trim();
+    const note = isAutoReturnNote(txn) ? '' : txn.note?.trim();
+    return partyName || note || getTypeLabel(txn.type);
   };
 
   return (
@@ -246,7 +289,17 @@ export default function HistoryPage() {
                   <div className="txn-left">
                     <span className="txn-emoji">{getTypeIcon(t.type)}</span>
                     <div className="txn-text">
-                      <p className="txn-name">{t.party?.name || t.note || t.type}</p>
+                      <p className="txn-name">{getTransactionTitle(t)}</p>
+                      {t.note && !isAutoReturnNote(t) && t.party?.name?.trim() && (
+                        <p className="txn-note">"{t.note}"</p>
+                      )}
+                      {(t.type === 'payment_in' || t.type === 'payment_out') && (
+                        <div style={{ marginTop: '2px' }}>
+                          <span className={`txn-settlement-badge ${t.type === 'payment_in' ? 'in' : 'out'}`}>
+                            {t.type === 'payment_in' ? '↓ Udhaar Collected' : '↑ Udhaar Paid'}
+                          </span>
+                        </div>
+                      )}
                       <p className="txn-date">{new Date(t.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
                       {t.items && t.items.length > 0 && (
                         <p className="txn-item-count">{t.items.length} item{t.items.length > 1 ? 's' : ''}</p>
@@ -261,7 +314,7 @@ export default function HistoryPage() {
                       {t.type === 'sale' || t.type === 'payment_in' ? '+' : t.type === 'return' ? '↩' : '-'}₹{t.amount}
                     </p>
                     {isPartial && <span className="khata-badge">📒</span>}
-                    <svg className="txn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4A4A60" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    <svg className="txn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
                   </div>
                 </button>
               );
@@ -279,7 +332,7 @@ export default function HistoryPage() {
             <div className="sheet-header">
               <span className="sheet-icon">{getTypeIcon(selectedTxn.type)}</span>
               <div>
-                <h2 className="sheet-title">{selectedTxn.type === 'sale' ? 'Sale' : selectedTxn.type === 'return' ? 'Return' : selectedTxn.type}</h2>
+                <h2 className="sheet-title">{getTypeLabel(selectedTxn.type)}</h2>
                 <p className="sheet-date">{new Date(selectedTxn.date).toLocaleString('en-IN')}</p>
               </div>
               <p className="sheet-amount" style={{ color: getTypeColor(selectedTxn.type) }}>₹{selectedTxn.amount}</p>
@@ -291,7 +344,7 @@ export default function HistoryPage() {
                 <span className="sheet-info-val">{selectedTxn.party.name}</span>
               </div>
             )}
-            {selectedTxn.note && (
+            {selectedTxn.note && !isAutoReturnNote(selectedTxn) && (
               <div className="sheet-info-row">
                 <span>Note</span>
                 <span className="sheet-info-val">{selectedTxn.note}</span>
@@ -303,10 +356,31 @@ export default function HistoryPage() {
               <div className="sheet-items">
                 <h3>Items</h3>
                 {selectedTxn.items.map(item => (
-                  <div key={item.id} className={`sheet-item ${returnMode === 'select' ? 'selectable' : ''} ${selectedItems[item.id] ? 'selected' : ''}`}>
+                  <div
+                    key={item.id}
+                    className={`sheet-item ${returnMode === 'select' ? 'selectable' : ''} ${selectedItems[item.id] ? 'selected' : ''}`}
+                    onClick={returnMode === 'select' ? () => toggleItem(item.id, item.quantity) : undefined}
+                    role={returnMode === 'select' ? 'button' : undefined}
+                    tabIndex={returnMode === 'select' ? 0 : undefined}
+                    onKeyDown={
+                      returnMode === 'select'
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              toggleItem(item.id, item.quantity);
+                            }
+                          }
+                        : undefined
+                    }
+                  >
                     {returnMode === 'select' && (
-                      <div className={`checkbox ${selectedItems[item.id] ? 'checked' : ''}`}
-                        onClick={() => toggleItem(item.id, item.quantity)}>
+                      <div
+                        className={`checkbox ${selectedItems[item.id] ? 'checked' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleItem(item.id, item.quantity);
+                        }}
+                      >
                         {selectedItems[item.id] ? '✓' : ''}
                       </div>
                     )}
@@ -316,9 +390,25 @@ export default function HistoryPage() {
                     </div>
                     {returnMode === 'select' && selectedItems[item.id] ? (
                       <div className="qty-controls">
-                        <button className="qty-btn" onClick={() => updateReturnQty(item.id, selectedItems[item.id] - 1, item.quantity)}>−</button>
+                        <button
+                          className="qty-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateReturnQty(item.id, selectedItems[item.id] - 1, item.quantity);
+                          }}
+                        >
+                          −
+                        </button>
                         <span className="qty-val">{selectedItems[item.id]}</span>
-                        <button className="qty-btn" onClick={() => updateReturnQty(item.id, selectedItems[item.id] + 1, item.quantity)}>+</button>
+                        <button
+                          className="qty-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateReturnQty(item.id, selectedItems[item.id] + 1, item.quantity);
+                          }}
+                        >
+                          +
+                        </button>
                       </div>
                     ) : (
                       <p className="sheet-item-total">₹{item.quantity * item.price}</p>
@@ -425,27 +515,33 @@ export default function HistoryPage() {
           border:1px solid rgba(255,255,255,.04); cursor:pointer;
           transition:all .15s; width:100%; text-align:left;
         }
-        .txn-card:active { transform:scale(0.98); background:#2A2A4A; }
+        .txn-card:active { transform:scale(0.98); background: var(--bg-surface-hover); }
         .txn-left { display:flex; gap:12px; align-items:center; flex:1; min-width:0; }
         .txn-emoji { font-size:28px; flex-shrink:0; }
         .txn-text { min-width:0; }
         .txn-name { font-size:14px; font-weight:600; color: var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .txn-date { font-size:11px; color:#4A4A60; margin-top:2px; }
+        .txn-note { font-size:12px; color: var(--text-secondary); margin-top:3px; font-style:italic; }
+        .txn-settlement-badge { display:inline-block; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; margin-top:2px; margin-bottom:2px; }
+        .txn-settlement-badge.in { background:rgba(34,197,94,.15); color:var(--color-success); }
+        .txn-settlement-badge.out { background:rgba(239,68,68,.15); color:var(--color-danger); }
+        .txn-date { font-size:11px; color: var(--text-muted); margin-top:2px; }
         .txn-item-count { font-size:11px; color: var(--text-muted); margin-top:2px; }
         .txn-khata-info { font-size:11px; color:#F59E0B; margin-top:2px; font-weight:600; }
         .khata-badge { font-size:14px; margin-right:2px; }
         .txn-right { display:flex; align-items:center; gap:6px; flex-shrink:0; }
         .txn-amt { font-size:16px; font-weight:700; }
-        .txn-arrow { flex-shrink:0; }
+        .txn-arrow { flex-shrink:0; color: var(--text-muted); }
 
         /* Detail Sheet */
         .sheet-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:2000; display:flex; align-items:flex-end; justify-content:center; animation:fadeIn .2s; }
         .sheet {
-          background:#1E1E38; border-radius:24px 24px 0 0; width:100%; max-width:480px;
+          background: var(--bg-surface-solid); border-radius:24px 24px 0 0; width:100%; max-width:480px;
           max-height:85vh; overflow-y:auto; padding:12px 20px 24px;
           animation:slideUp .3s ease-out;
+          border: 1px solid var(--border-color);
+          border-bottom: none;
         }
-        .sheet-handle { width:40px; height:4px; border-radius:2px; background:rgba(255,255,255,.15); margin:0 auto 16px; }
+        .sheet-handle { width:40px; height:4px; border-radius:2px; background: var(--border-color); margin:0 auto 16px; }
         .sheet-header { display:flex; align-items:center; gap:14px; margin-bottom:20px; }
         .sheet-icon { font-size:36px; }
         .sheet-title { font-size:18px; font-weight:700; color: var(--text-primary); text-transform:capitalize; }
@@ -459,11 +555,11 @@ export default function HistoryPage() {
         .sheet-items h3 { font-size:13px; color: var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
         .sheet-item {
           display:flex; align-items:center; gap:12px;
-          padding:12px; background:rgba(255,255,255,.03); border-radius:10px;
+          padding:12px; background: var(--bg-surface); border-radius:10px;
           margin-bottom:6px; border:1.5px solid transparent; transition:all .15s;
         }
         .sheet-item.selectable { cursor:pointer; }
-        .sheet-item.selectable:hover { background:rgba(255,255,255,.06); }
+        .sheet-item.selectable:hover { background: var(--bg-surface-hover); }
         .sheet-item.selected { border-color:rgba(245,158,11,.4); background:rgba(245,158,11,.06); }
         .sheet-item-info { flex:1; }
         .sheet-item-name { font-size:14px; font-weight:600; color: var(--text-primary); }
@@ -503,13 +599,13 @@ export default function HistoryPage() {
         .confirm-text { font-size:14px; color: var(--text-secondary); margin-bottom:14px; text-align:center; }
         .confirm-btns { display:flex; gap:10px; }
         .confirm-btn { flex:1; padding:12px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; border:none; transition:all .15s; }
-        .confirm-btn.cancel { background:rgba(255,255,255,.06); color: var(--text-secondary); }
+        .confirm-btn.cancel { background: var(--bg-surface); color: var(--text-secondary); border: 1px solid var(--border-color); }
         .confirm-btn.proceed { background:rgba(245,158,11,.15); color:#F59E0B; }
         .confirm-btn.proceed:hover { background:rgba(245,158,11,.25); }
         .confirm-btn:disabled { opacity:.5; cursor:not-allowed; }
 
-        .sheet-close { width:100%; padding:14px; margin-top:16px; border-radius:12px; background:rgba(255,255,255,.04); color: var(--text-muted); border:none; font-size:14px; font-weight:600; cursor:pointer; transition:all .15s; }
-        .sheet-close:hover { background:rgba(255,255,255,.08); color: var(--text-primary); }
+        .sheet-close { width:100%; padding:14px; margin-top:16px; border-radius:12px; background: var(--bg-surface); color: var(--text-muted); border:1px solid var(--border-color); font-size:14px; font-weight:600; cursor:pointer; transition:all .15s; }
+        .sheet-close:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
 
         .toast {
           position:fixed; bottom:100px; left:50%; transform:translateX(-50%);

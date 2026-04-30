@@ -133,18 +133,18 @@ export default function SplashPage() {
         <div className="welcome-cta">
           <div className="cta-buttons">
             <Button
-              id="get-started-btn"
+              id="login-btn"
               fullWidth
               size="lg"
               onClick={() => router.push('/auth/phone')}
             >
-              Get Started
+              Login
             </Button>
             <button 
               className="login-link-btn"
               onClick={() => router.push('/auth/phone')}
             >
-              Already have an account? <span>Login</span>
+              New here? <span>Create an account</span>
             </button>
           </div>
           <p className="welcome-terms">By continuing, you agree to our Terms of Service</p>
