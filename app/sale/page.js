@@ -36,6 +36,8 @@ export default function SalePage() {
   const [saleDate, setSaleDate] = useState(todayStr);
   const [note, setNote] = useState('');
   const [search, setSearch] = useState('');
+  const [showAllProducts, setShowAllProducts] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
   const fmtNum = (v) => {
     const n = Number(v);
     if (!Number.isFinite(n)) return '0';
@@ -199,10 +201,16 @@ export default function SalePage() {
   const getLineTotal = (item) => item.customTotal != null ? item.customTotal : Math.round(item.price * item.quantity * 100) / 100;
   const totalAmount = Math.round(cart.reduce((sum, item) => sum + getLineTotal(item), 0) * 100) / 100;
 
-  // Search filter
-  const filteredProducts = search.trim()
-    ? products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
-    : products;
+  // Search filter — only show results when user has typed
+  const searchTrimmed = search.trim();
+  const filteredProducts = searchTrimmed
+    ? products.filter(p => p.name.toLowerCase().includes(searchTrimmed.toLowerCase()))
+    : [];
+  // "Browse all" list when user opens the full picker
+  const allAvailableProducts = products.filter(p => p.quantity > 0);
+  const outOfStockProducts = products.filter(p => p.quantity <= 0);
+  // Quick-access: products already in cart (show as removable chips)
+  const cartProductIds = new Set(cart.map(c => c.product.id));
   const totalItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleCompleteSale = async () => {
@@ -347,36 +355,107 @@ export default function SalePage() {
 
         {error && <div className="error-banner">{error}</div>}
 
-        {/* Product Selector - tap to add */}
+        {/* Product Selector — search-first design */}
         <div className="card">
-          <h2>Tap a product to add</h2>
-          <input
-            type="text"
-            className="search-input"
-            placeholder="🔍 Search products..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <div className="product-grid">
-            {filteredProducts.map(p => {
-              const inCart = cart.find(c => c.product.id === p.id);
-              const outOfStock = p.quantity <= 0;
-              return (
-                <button 
-                  key={p.id} 
-                  className={`product-chip ${inCart ? 'in-cart' : ''} ${outOfStock ? 'out-of-stock' : ''}`}
-                  onClick={() => handleProductSelect(p.id)}
-                  disabled={outOfStock}
-                >
-                  <span className="chip-name">{p.name}</span>
-                  <span className="chip-price">₹{fmtPrice(p.sellPrice)}</span>
-                  <span className="chip-stock">{fmtNum(p.quantity)} {p.unit}</span>
-                  {inCart && <span className="chip-badge">{inCart.quantity}</span>}
-                </button>
-              );
-            })}
-            {filteredProducts.length === 0 && <p className="no-results">No products found</p>}
+          <h2>Add Products</h2>
+
+          {/* Search bar */}
+          <div className={`search-wrapper ${searchFocused ? 'focused' : ''}`}>
+            <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search products..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setShowAllProducts(false); }}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              autoComplete="off"
+            />
+            {search && (
+              <button className="search-clear" onClick={() => setSearch('')}>✕</button>
+            )}
           </div>
+
+          {/* Search results */}
+          {searchTrimmed && (
+            <div className="product-grid search-results">
+              {filteredProducts.length === 0 && (
+                <p className="no-results">No products found for &ldquo;{searchTrimmed}&rdquo;</p>
+              )}
+              {filteredProducts.map(p => {
+                const inCart = cart.find(c => c.product.id === p.id);
+                const outOfStock = p.quantity <= 0;
+                return (
+                  <button
+                    key={p.id}
+                    className={`product-chip ${inCart ? 'in-cart' : ''} ${outOfStock ? 'out-of-stock' : ''}`}
+                    onClick={() => handleProductSelect(p.id)}
+                    disabled={outOfStock}
+                  >
+                    <span className="chip-name">{p.name}</span>
+                    <span className="chip-price">₹{fmtPrice(p.sellPrice)}</span>
+                    <span className="chip-stock">{fmtNum(p.quantity)} {p.unit}</span>
+                    {inCart && <span className="chip-badge">{inCart.quantity}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* When not searching: show empty-state prompt or quick picks */}
+          {!searchTrimmed && !showAllProducts && (
+            <div className="picker-idle">
+              {cart.length === 0 ? (
+                <p className="idle-hint">🔍 Type above to find &amp; add products</p>
+              ) : (
+                <>
+                  <p className="idle-hint small">Tap to add more or browse all</p>
+                </>
+              )}
+              <button
+                className="browse-all-btn"
+                onClick={() => setShowAllProducts(true)}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Browse all {allAvailableProducts.length} products
+              </button>
+            </div>
+          )}
+
+          {/* Full browse grid */}
+          {!searchTrimmed && showAllProducts && (
+            <>
+              <div className="product-grid">
+                {allAvailableProducts.map(p => {
+                  const inCart = cart.find(c => c.product.id === p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      className={`product-chip ${inCart ? 'in-cart' : ''}`}
+                      onClick={() => handleProductSelect(p.id)}
+                    >
+                      <span className="chip-name">{p.name}</span>
+                      <span className="chip-price">₹{fmtPrice(p.sellPrice)}</span>
+                      <span className="chip-stock">{fmtNum(p.quantity)} {p.unit}</span>
+                      {inCart && <span className="chip-badge">{inCart.quantity}</span>}
+                    </button>
+                  );
+                })}
+                {outOfStockProducts.map(p => (
+                  <button key={p.id} className="product-chip out-of-stock" disabled>
+                    <span className="chip-name">{p.name}</span>
+                    <span className="chip-price">₹{fmtPrice(p.sellPrice)}</span>
+                    <span className="chip-stock out-label">Out of stock</span>
+                  </button>
+                ))}
+              </div>
+              <button className="browse-all-btn collapse-btn" onClick={() => setShowAllProducts(false)}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="18 15 12 9 6 15"/></svg>
+                Collapse
+              </button>
+            </>
+          )}
         </div>
 
         {/* Sale Items List */}
@@ -567,6 +646,40 @@ export default function SalePage() {
         .card { background: var(--bg-surface-solid); border-radius: 16px; padding: 16px; margin-bottom: 16px; border: 1px solid var(--border-color); }
         .card h2 { font-size: 14px; margin-top: 0; margin-bottom: 14px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
         
+        /* Search wrapper */
+        .search-wrapper {
+          display: flex; align-items: center; gap: 10px;
+          background: var(--bg-input); border: 1.5px solid var(--border-color);
+          border-radius: 12px; padding: 0 14px; margin-bottom: 14px;
+          transition: border-color 0.2s;
+        }
+        .search-wrapper.focused { border-color: #7B42C4; }
+        .search-icon { color: var(--text-muted); flex-shrink: 0; }
+        .search-input {
+          flex: 1; background: transparent; border: none; outline: none;
+          padding: 12px 0; color: var(--text-primary); font-size: 15px;
+        }
+        .search-input::placeholder { color: var(--text-muted); }
+        .search-clear {
+          background: none; border: none; color: var(--text-muted); cursor: pointer;
+          font-size: 13px; padding: 4px; line-height: 1;
+        }
+        /* Idle state */
+        .picker-idle { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 4px 0 2px; }
+        .idle-hint { color: var(--text-muted); font-size: 13px; margin: 0; text-align: center; }
+        .idle-hint.small { font-size: 12px; }
+        .browse-all-btn {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 8px 16px; border-radius: 8px;
+          background: var(--bg-surface-hover); border: 1px solid var(--border-color);
+          color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer;
+          transition: all 0.15s; width: 100%; justify-content: center;
+        }
+        .browse-all-btn:hover { background: var(--bg-purple-subtle); border-color: rgba(123,66,196,0.4); color: var(--text-primary); }
+        .collapse-btn { margin-top: 10px; }
+        /* Search results label */
+        .search-results { margin-top: 0; }
+        /* Product grid */
         .product-grid { display: flex; flex-wrap: wrap; gap: 8px; }
         .product-chip {
           position: relative;
@@ -578,24 +691,18 @@ export default function SalePage() {
         }
         .product-chip:active { transform: scale(0.95); }
         .product-chip.in-cart { border-color: var(--icon-active); background: var(--bg-purple-subtle); }
-        .product-chip.out-of-stock { opacity: 0.4; cursor: not-allowed; }
+        .product-chip.out-of-stock { opacity: 0.35; cursor: not-allowed; }
         .chip-name { font-size: 13px; font-weight: 600; text-align: center; }
         .chip-price { font-size: 11px; color: var(--text-secondary); }
         .chip-stock { font-size: 10px; color: var(--text-muted); }
+        .out-label { color: var(--color-danger) !important; }
         .chip-badge {
           position: absolute; top: -6px; right: -6px;
           width: 22px; height: 22px; border-radius: 50%;
-          background: var(--text-primary); color: var(--bg-primary);
+          background: var(--icon-active); color: #fff;
           font-size: 11px; font-weight: 700;
           display: flex; align-items: center; justify-content: center;
         }
-        .search-input {
-          width: 100%; padding: 10px 14px; margin-bottom: 12px;
-          background: var(--bg-input); border: 1px solid var(--border-color);
-          border-radius: 10px; color: var(--text-primary); font-size: 14px; outline: none;
-        }
-        .search-input:focus { border-color: #7B42C4; }
-        .search-input::placeholder { color: var(--text-muted); }
         .no-results { color: var(--text-muted); font-size: 13px; text-align: center; padding: 16px; width: 100%; }
         
         .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }

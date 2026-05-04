@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TransactionStore } from '../lib/store';
+import { downloadInvoicePDF } from '../lib/pdfUtils';
 
 // Helper to get auth headers for API calls
 function getAuthHeaders() {
@@ -421,6 +422,9 @@ export default function HistoryPage() {
             {/* Action Buttons */}
             {selectedTxn.type === 'sale' && !returnMode && (
               <div className="sheet-actions">
+                <button className="action-btn download-inv" onClick={() => downloadInvoicePDF(selectedTxn)}>
+                  <span>🧾</span> Download Invoice PDF
+                </button>
                 <button className="action-btn return-all" onClick={() => setReturnMode('confirm-all')}>
                   <span>🔄</span> Return All Items
                 </button>
@@ -594,6 +598,8 @@ export default function HistoryPage() {
         .return-all:hover { background:rgba(245,158,11,.15); }
         .return-select { background:rgba(74,108,247,.1); color:#4A6CF7; border:1px solid rgba(74,108,247,.2); }
         .return-select:hover { background:rgba(74,108,247,.15); }
+        .download-inv { background:rgba(123,66,196,.12); color:#B68AFF; border:1px solid rgba(123,66,196,.25); }
+        .download-inv:hover { background:rgba(123,66,196,.2); }
 
         .confirm-section { margin-top:16px; padding:16px; background:rgba(245,158,11,.05); border:1px solid rgba(245,158,11,.15); border-radius:14px; }
         .confirm-text { font-size:14px; color: var(--text-secondary); margin-bottom:14px; text-align:center; }

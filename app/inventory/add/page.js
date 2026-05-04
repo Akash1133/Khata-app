@@ -63,6 +63,11 @@ export default function AddProductPage() {
   const [updateTouchedCategories, setUpdateTouchedCategories] = useState(new Set());
   const [updateLoading, setUpdateLoading] = useState(false);
   const [updateSuccessData, setUpdateSuccessData] = useState(null);
+  // Autocomplete state for each update row: { [rowIndex]: { query: string, open: boolean } }
+  const [updateSearchState, setUpdateSearchState] = useState({});
+  const getUpdateSearch = (i) => updateSearchState[i] ?? { query: '', open: false };
+  const setUpdateSearch = (i, patch) =>
+    setUpdateSearchState(prev => ({ ...prev, [i]: { ...getUpdateSearch(i), ...patch } }));
   const normalizeDecimalInput = (v, decimals = 2) => {
     if (v === '') return '';
     if (v.startsWith('.')) return `0${v}`;
@@ -219,26 +224,39 @@ export default function AddProductPage() {
   };
 
   // === UPDATE MODE LOGIC ===
+  const selectUpdateProduct = (index, product) => {
+    setUpdateRows(prev => {
+      const copy = [...prev];
+      copy[index] = {
+        ...copy[index],
+        name: product.name,
+        category: product.category,
+        buyPrice: product.buyPrice?.toString() || '0',
+        sellPrice: product.sellPrice?.toString() || '0',
+      };
+      return copy;
+    });
+    setUpdateTouchedCategories(prev => new Set(prev).add(index));
+    setUpdateSearch(index, { query: product.name, open: false });
+  };
+
+  const handleUpdateNameInput = (index, value) => {
+    setUpdateSearch(index, { query: value, open: true });
+    // If user clears the field, also clear the locked name
+    if (!value.trim()) {
+      setUpdateRows(prev => {
+        const copy = [...prev];
+        copy[index] = { ...copy[index], name: '' };
+        return copy;
+      });
+    }
+  };
+
   const updateUpdateRow = (index, field, value) => {
     if (field === 'category') setUpdateTouchedCategories(prev => new Set(prev).add(index));
     setUpdateRows(prev => {
       const copy = [...prev];
-      let rowUpdates = { [field]: value };
-      
-      if (field === 'name') {
-        const existingMatch = products.find(p => p.name.toLowerCase() === value.toLowerCase().trim());
-        if (existingMatch) {
-          rowUpdates = {
-            ...rowUpdates,
-            category: existingMatch.category,
-            buyPrice: existingMatch.buyPrice?.toString() || '0',
-            sellPrice: existingMatch.sellPrice?.toString() || '0',
-          };
-          setUpdateTouchedCategories(prevSets => new Set(prevSets).add(index));
-        }
-      }
-
-      copy[index] = { ...copy[index], ...rowUpdates };
+      copy[index] = { ...copy[index], [field]: value };
       return copy;
     });
   };
@@ -536,40 +554,104 @@ export default function AddProductPage() {
         ) : (
           /* === UPDATE MODE === */
           <div className="bulk-section">
+            {/* Info hint */}
+            <div className="update-hint">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Only existing products can be updated. Type to search &amp; select.
+            </div>
+
             {/* Table Header */}
             <div className="update-mode-header">
-              <span className="col-name">NAME *</span>
-              <span className="col-num">QTY</span>
+              <span className="col-name">PRODUCT *</span>
+              <span className="col-num">ADD QTY</span>
               <span className="col-x"></span>
             </div>
 
             {/* Table Rows */}
             <div className="bulk-table-body">
-              {updateRows.map((row, i) => (
-                <div key={i} className={`update-mode-row ${row.name.trim() ? 'filled' : ''}`}>
-                  <input
-                    className="bulk-cell col-name"
-                    placeholder="Product name"
-                    value={row.name}
-                    onChange={(e) => updateUpdateRow(i, 'name', e.target.value)}
-                    list="bulk-product-list"
-                  />
-                  <div className="qty-control-cell">
-                    <button className="qty-btn" onClick={() => adjustUpdateQty(i, -1)}>−</button>
-                    <input
-                      className="qty-input"
-                      type="number"
-                      min="0"
-                      inputMode="decimal"
-                      placeholder="0"
-                      value={row.quantity}
-                      onChange={(e) => updateUpdateRow(i, 'quantity', e.target.value)}
-                    />
-                    <button className="qty-btn" onClick={() => adjustUpdateQty(i, 1)}>+</button>
+              {updateRows.map((row, i) => {
+                const { query, open } = getUpdateSearch(i);
+                const displayQuery = row.name ? row.name : query;
+                const suggestions = (open || !row.name) && query.trim()
+                  ? products.filter(p =>
+                      p.name.toLowerCase().includes(query.toLowerCase()) &&
+                      !updateRows.some((r, ri) => ri !== i && r.name === p.name)
+                    ).slice(0, 6)
+                  : [];
+                return (
+                  <div key={i} className={`update-mode-row ${row.name.trim() ? 'filled' : ''}`}>
+                    <div className="update-name-cell">
+                      <div className="update-search-wrapper">
+                        <input
+                          className={`bulk-cell col-name update-name-input ${row.name ? 'locked' : ''}`}
+                          placeholder="Search existing product..."
+                          value={row.name ? row.name : query}
+                          onChange={(e) => {
+                            if (row.name) {
+                              // If already locked, unlock on change
+                              setUpdateRows(prev => { const c=[...prev]; c[i]={...c[i],name:''}; return c; });
+                              setUpdateSearch(i, { query: e.target.value, open: true });
+                            } else {
+                              handleUpdateNameInput(i, e.target.value);
+                            }
+                          }}
+                          onFocus={() => !row.name && setUpdateSearch(i, { query, open: true })}
+                          onBlur={() => setTimeout(() => setUpdateSearch(i, { open: false }), 150)}
+                          autoComplete="off"
+                        />
+                        {row.name && (
+                          <span className="locked-check">✓</span>
+                        )}
+                      </div>
+                      {suggestions.length > 0 && (
+                        <div className="update-suggestions">
+                          {suggestions.map(p => (
+                            <button
+                              key={p.id}
+                              className="suggestion-item"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => selectUpdateProduct(i, p)}
+                            >
+                              <span className="sug-name">{p.name}</span>
+                              <span className="sug-meta">{p.category} · {p.quantity} in stock</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {open && query.trim() && suggestions.length === 0 && (
+                        <div className="update-suggestions">
+                          <div className="sug-empty">No matching products</div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="qty-control-cell">
+                      <button className="qty-btn" onClick={() => adjustUpdateQty(i, -1)}>−</button>
+                      <input
+                        className="qty-input"
+                        type="number"
+                        min="0"
+                        inputMode="decimal"
+                        placeholder="0"
+                        value={row.quantity}
+                        onChange={(e) => updateUpdateRow(i, 'quantity', e.target.value)}
+                      />
+                      <button className="qty-btn" onClick={() => adjustUpdateQty(i, 1)}>+</button>
+                    </div>
+                    <button className="bulk-cell-x" onClick={() => {
+                      removeUpdateRow(i);
+                      setUpdateSearchState(prev => {
+                        const next = {};
+                        Object.keys(prev).forEach(k => {
+                          const ki = Number(k);
+                          if (ki < i) next[ki] = prev[k];
+                          else if (ki > i) next[ki - 1] = prev[k];
+                        });
+                        return next;
+                      });
+                    }}>×</button>
                   </div>
-                  <button className="bulk-cell-x" onClick={() => removeUpdateRow(i)}>×</button>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <button className="add-rows-btn" onClick={addMoreUpdateRows}>+ Add 5 more rows</button>
@@ -809,6 +891,12 @@ export default function AddProductPage() {
 
         
         /* Update Mode Specific */
+        .update-hint {
+          display: flex; align-items: center; gap: 8px;
+          padding: 10px 14px; background: rgba(123,66,196,0.08);
+          border: 1px dashed rgba(123,66,196,0.3); border-radius: 10px;
+          font-size: 12px; color: var(--text-secondary);
+        }
         .update-mode-header {
           display: grid;
           grid-template-columns: 1fr 140px 44px;
@@ -827,11 +915,39 @@ export default function AddProductPage() {
           grid-template-columns: 1fr 140px 44px;
           gap: 6px;
           margin-bottom: 6px;
+          align-items: start;
         }
         .update-mode-row.filled .qty-control-cell {
           border-color: rgba(34,197,94,0.5);
           background: rgba(34,197,94,0.04);
         }
+        /* Autocomplete cell */
+        .update-name-cell { position: relative; }
+        .update-search-wrapper { position: relative; display: flex; align-items: center; }
+        .update-name-input { padding-right: 28px !important; }
+        .update-name-input.locked { border-color: rgba(34,197,94,0.5) !important; background: rgba(34,197,94,0.05) !important; }
+        .locked-check {
+          position: absolute; right: 10px; color: var(--color-success);
+          font-size: 14px; font-weight: 700; pointer-events: none;
+        }
+        .update-suggestions {
+          position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50;
+          background: #1E1E30; border: 1.5px solid rgba(123,66,196,0.4);
+          border-radius: 10px; overflow: hidden;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+        .suggestion-item {
+          display: flex; flex-direction: column; gap: 2px;
+          width: 100%; padding: 10px 12px; background: transparent; border: none;
+          color: var(--text-primary); text-align: left; cursor: pointer;
+          transition: background 0.1s;
+          border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item:hover { background: rgba(123,66,196,0.15); }
+        .sug-name { font-size: 13px; font-weight: 600; }
+        .sug-meta { font-size: 11px; color: var(--text-muted); }
+        .sug-empty { padding: 12px; font-size: 12px; color: var(--text-muted); text-align: center; }
         .bulk-plus { color: var(--color-success); font-size: 16px; font-weight: 700; }
         .bulk-input {
           width: 64px; height: 36px; text-align: center; font-size: 15px; font-weight: 700;

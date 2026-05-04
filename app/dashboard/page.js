@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserStore, ProductStore, TransactionStore } from '../lib/store';
 import Card from '../components/Card';
+import { computeBusinessScore, getScoreLabel } from '../lib/scoreEngine';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ todaySales: 0, monthSales: 0, totalProducts: 0, lowStock: 0 });
   const [transactions, setTransactions] = useState([]);
   const [showBalances, setShowBalances] = useState(false);
+  const [bizScore, setBizScore] = useState(null);
 
 
   // Replaced manual month series with getDailyStats from store
@@ -38,6 +40,9 @@ export default function DashboardPage() {
             .filter((t) => t.type === 'sale')
             .slice(0, 5)
         );
+        // Compute business score
+        const scoreResult = computeBusinessScore(allTxns, allProducts);
+        setBizScore(scoreResult);
       });
     };
 
@@ -62,6 +67,7 @@ export default function DashboardPage() {
     { emoji: '🛒', label: 'Buy Stock', color: '#10B981', href: '/purchase' },
     { emoji: '📒', label: 'Ledger', color: '#F97316', href: '/khata' },
     { emoji: '📊', label: 'P&L', color: '#EC4899', href: '/pl' },
+    { emoji: '🧠', label: 'Insights', color: '#8B5CF6', href: '/insights' },
   ];
 
   const formatCurrency = (n) => {
@@ -148,6 +154,25 @@ export default function DashboardPage() {
         </div>
 
 
+
+        {/* Insights Score Banner */}
+        {bizScore && (
+          <button className="score-banner" onClick={() => router.push('/insights')}>
+            <div className="score-banner-left">
+              <span className="score-banner-emoji">{bizScore.grade.emoji}</span>
+              <div>
+                <p className="score-banner-label">Business Health Score</p>
+                <p className="score-banner-grade" style={{ color: bizScore.grade.color }}>{bizScore.grade.label}</p>
+              </div>
+            </div>
+            <div className="score-banner-right">
+              <div className="score-banner-ring" style={{ '--sc': bizScore.grade.color }}>
+                <span className="score-banner-num">{bizScore.score}</span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{color:'var(--text-muted)'}}><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </button>
+        )}
 
         {/* Recent Transactions */}
         <div className="section">
@@ -256,6 +281,31 @@ export default function DashboardPage() {
         .action-btn:active { transform: scale(0.95); }
         .action-icon { font-size: 28px; }
         .action-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+
+        /* Score Banner */
+        .score-banner {
+          display: flex; align-items: center; justify-content: space-between;
+          width: 100%; padding: 16px 18px; margin-bottom: 24px;
+          background: linear-gradient(135deg, rgba(123,66,196,0.14), rgba(74,108,247,0.08));
+          border: 1px solid rgba(123,66,196,0.25);
+          border-radius: 18px; cursor: pointer;
+          transition: transform 0.18s ease, border-color 0.18s ease;
+          text-align: left;
+        }
+        .score-banner:hover { transform: translateY(-2px); border-color: rgba(123,66,196,0.4); }
+        .score-banner-left { display: flex; align-items: center; gap: 12px; }
+        .score-banner-emoji { font-size: 28px; }
+        .score-banner-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+        .score-banner-grade { font-size: 14px; font-weight: 700; }
+        .score-banner-right { display: flex; align-items: center; gap: 10px; }
+        .score-banner-ring {
+          width: 52px; height: 52px; border-radius: 50%;
+          background: conic-gradient(var(--sc, #7B42C4) calc(var(--score-pct, 0.7) * 360deg), rgba(255,255,255,0.06) 0);
+          display: flex; align-items: center; justify-content: center;
+          box-shadow: inset 0 0 0 7px var(--bg-primary);
+          position: relative;
+        }
+        .score-banner-num { font-size: 14px; font-weight: 800; color: var(--text-primary); }
 
 
 

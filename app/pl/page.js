@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { TransactionStore } from '../lib/store';
+import { downloadPLReportPDF } from '../lib/pdfUtils';
 
 function getDayProfitMetrics(entry) {
   const sales = Number(entry?.totalSale) || 0;
@@ -34,6 +35,7 @@ export default function ProfitLossPage() {
   const [monthOffset, setMonthOffset] = useState(0);
   const [showBalances, setShowBalances] = useState(false);
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
+  const [allTransactions, setAllTransactions] = useState([]);
 
   useEffect(() => {
     const load = async () => {
@@ -41,10 +43,12 @@ export default function ProfitLossPage() {
 
       const today = new Date();
       const baseMonthDate = new Date(today.getFullYear(), today.getMonth() - monthOffset, 1);
-      const [dailyStats, monthStats] = await Promise.all([
+      const [dailyStats, monthStats, txns] = await Promise.all([
         TransactionStore.getDailyStats(7, today),
         TransactionStore.getMonthStats(baseMonthDate.getFullYear(), baseMonthDate.getMonth()),
+        TransactionStore.getAll(),
       ]);
+      setAllTransactions(txns);
 
       const normalizedDailyStats = dailyStats.map((entry) => ({
         ...entry,
@@ -107,33 +111,37 @@ export default function ProfitLossPage() {
   const ringFill = `conic-gradient(${ringAccent} 0deg ${(summaryRingProgress / 100) * 360}deg, ${ringTrack} ${(summaryRingProgress / 100) * 360}deg 360deg)`;
 
   const handleDownload = () => {
-    const csvContent = [
-      ['Profit & Loss Report'],
-      ['Generated On', new Date().toLocaleString('en-IN')],
-      [],
-      ['Metric', 'Value'],
-      ['Today Sales', todayMetrics.sales.toFixed(2)],
-      ['Today Profit', todayMetrics.profit.toFixed(2)],
-      ['Today Profit %', todayMetrics.profitPercent.toFixed(2)],
-      ['Today Items Sold', todayMetrics.items],
-      [],
-      ['Monthly Summary'],
-      ['Month', currentMonthDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })],
-      ['Monthly Sales', monthTotals.sales.toFixed(2)],
-      ['Monthly Profit', monthTotals.profit.toFixed(2)],
-      ['Monthly Profit %', monthProfitPercent.toFixed(2)],
-      ['Monthly Items Sold', monthTotals.items],
-      ['Active Days', monthTotals.activeDays],
-    ].map((row) => row.join(',')).join('\n');
+    const year = currentMonthDate.getFullYear();
+    const month = currentMonthDate.getMonth();
+    const monthLabel = currentMonthDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `PL_Report_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Aggregate per-product sales for the selected month
+    const productMap = {};
+    allTransactions.forEach(t => {
+      const d = new Date(t.date);
+      if (t.type !== 'sale' || d.getFullYear() !== year || d.getMonth() !== month) return;
+      (t.items || []).forEach(item => {
+        const name = item.product?.name || item.name || 'Unknown';
+        const buyPrice = item.buyPrice ?? item.product?.buyPrice ?? 0;
+        const sellPrice = Number(item.price) || 0;
+        const qty = Number(item.quantity) || 0;
+        if (!productMap[name]) {
+          productMap[name] = { name, qtySold: 0, buyPrice: Number(buyPrice), sellPrice, profit: 0 };
+        }
+        productMap[name].qtySold += qty;
+        productMap[name].profit += (sellPrice - Number(buyPrice)) * qty;
+        // update sell price to latest seen
+        productMap[name].sellPrice = sellPrice;
+      });
+    });
+    const productSalesList = Object.values(productMap).sort((a, b) => b.profit - a.profit);
+
+    downloadPLReportPDF({
+      monthLabel,
+      monthTotals,
+      monthCalendarStats,
+      productSalesList,
+    });
   };
 
   if (loading) return <div className="loading">Loading...</div>;
@@ -146,8 +154,9 @@ export default function ProfitLossPage() {
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
           </button>
           <h1>Profit & Loss</h1>
-          <button className="download-btn" onClick={handleDownload} title="Download Report">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <button className="download-btn" onClick={handleDownload} title="Download PDF Report">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span style={{fontSize:'10px',fontWeight:700,letterSpacing:'0.5px'}}>PDF</span>
           </button>
         </div>
 
