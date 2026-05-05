@@ -58,12 +58,12 @@ export const AuthService = {
     }
   },
 
-  async register({ username, password, name }) {
+  async register({ username, password, name, gstin }) {
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, name })
+        body: JSON.stringify({ username, password, name, gstin })
       });
       const data = await res.json();
       if (!res.ok) return { success: false, message: data.error || 'Signup failed' };

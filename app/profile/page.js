@@ -35,7 +35,7 @@ const THEMES = [
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
-  const [theme, setTheme] = useState('system');
+  const [theme, setTheme] = useState('light');
   const [language, setLanguage] = useState('en');
   const [showPreferences, setShowPreferences] = useState(false);
   const [showLanguageOptions, setShowLanguageOptions] = useState(false);
@@ -52,6 +52,7 @@ export default function ProfilePage() {
     document.documentElement.setAttribute('data-theme', nextTheme);
     setShowThemeOptions(false);
   };
+
 
   const applyLanguage = (langCode) => {
     setLanguage(langCode);
@@ -89,15 +90,14 @@ export default function ProfilePage() {
       ]);
     });
 
-    setTheme(localStorage.getItem('khata_pref_theme') || 'system');
+    setTheme(localStorage.getItem('khata_pref_theme') || 'light');
     setLanguage(localStorage.getItem('khata_pref_language') || 'en');
   }, [router]);
 
   if (!user) return null;
 
   const currentLanguage = LANGUAGES.find((l) => l.code === language)?.label || 'English';
-  const currentTheme = THEMES.find((t) => t.key === theme)?.label || 'System Default';
-
+  const currentTheme = THEMES.find((t) => t.key === theme)?.label || 'Light';
   return (
     <div className="profile-page">
       <div className="profile-content">

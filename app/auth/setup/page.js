@@ -23,6 +23,7 @@ export default function SetupPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [email, setEmail] = useState(existingUser.email || '');
   const [businessName, setBusinessName] = useState(existingUser.businessName || '');
+  const [gstin, setGstin] = useState(existingUser.gstin || '');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -44,7 +45,8 @@ export default function SetupPage() {
         username: username.trim().toLowerCase(),
         password: password || undefined,
         email: email.trim(), 
-        businessName: businessName.trim() 
+        businessName: businessName.trim(),
+        gstin: gstin.trim().toUpperCase()
       });
 
       if (updated) {
@@ -131,6 +133,14 @@ export default function SetupPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B6B80" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>}
+          />
+
+          <Input
+            id="setup-gstin"
+            label="GSTIN"
+            placeholder="22AAAAA0000A1Z5"
+            value={gstin}
+            onChange={(e) => setGstin(e.target.value.toUpperCase())}
           />
 
         <div className="setup-info">

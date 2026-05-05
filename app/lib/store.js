@@ -130,6 +130,7 @@ export const UserStore = {
       phone: userData.phone,
       email: userData.email || '',
       businessName: userData.businessName || '',
+      gstin: userData.gstin || '',
       createdAt: userData.createdAt || new Date().toISOString(),
     };
     console.log('SYNC SUCCESS: Saving Server ID to localStorage:', user.id);

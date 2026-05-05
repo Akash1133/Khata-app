@@ -480,6 +480,7 @@ img {
 [data-theme='dark'] .dark-logo { display: block; }
 
 html[data-theme='system'] .dark-logo { display: block; }
+
 @media (prefers-color-scheme: light) {
   html[data-theme='system'] .dark-logo { display: none; }
   html[data-theme='system'] .light-logo { display: block; }

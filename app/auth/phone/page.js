@@ -11,7 +11,7 @@ import Input from '../../components/Input';
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState('login'); // login | signup
-  const [form, setForm] = useState({ username: '', password: '', name: '' });
+  const [form, setForm] = useState({ username: '', password: '', name: '', gstin: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [otpPhone, setOtpPhone] = useState('');
@@ -37,7 +37,7 @@ export default function LoginPage() {
     };
     const result = mode === 'login'
       ? await AuthService.login(payload.username, payload.password)
-      : await AuthService.register({ ...payload, name: form.name.trim() });
+      : await AuthService.register({ ...payload, name: form.name.trim(), gstin: form.gstin.trim().toUpperCase() });
 
     setLoading(false);
     if (!result.success) return setError(result.message);
@@ -118,7 +118,10 @@ export default function LoginPage() {
 
         <form onSubmit={onSubmit} className="auth-form">
           {mode === 'signup' && (
-            <Input id="name-input" label="Name *" placeholder="Your name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <>
+              <Input id="name-input" label="Name *" placeholder="Your name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Input id="gstin-input" label="GSTIN" placeholder="22AAAAA0000A1Z5" value={form.gstin} onChange={(e) => setForm({ ...form, gstin: e.target.value.toUpperCase() })} />
+            </>
           )}
           <Input id="username-input" label="Username *" placeholder="e.g. amit.store" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} autoFocus />
           <Input id="password-input" label="Password *" type="password" placeholder="At least 6 characters" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />

@@ -28,7 +28,7 @@ function baseStyles() {
     .badge-udhaar { background: #fee2e2; color: #991b1b; }
 
     /* Party section */
-    .party-section { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+    .party-section { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 20px; margin-bottom: 24px; }
     .party-block h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 6px; }
     .party-block p { font-size: 14px; font-weight: 600; color: #111; }
     .party-block .sub { font-size: 12px; color: #555; font-weight: 400; }
@@ -86,19 +86,15 @@ function openPrintWindow(html) {
 /** ──────────────────────────────────────────────
  * 1. INVOICE — for a single sale transaction
  * ────────────────────────────────────────────── */
-export function downloadInvoicePDF(txn) {
+export function downloadInvoicePDF(txn, options = {}) {
   const date = new Date(txn.date).toLocaleString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   const shortId = txn.id?.slice(-8)?.toUpperCase() ?? 'N/A';
-  const partyName = txn.party?.name || 'Walk-in Customer';
-  const isWalkin = !txn.party?.name;
   const totalAmt = Number(txn.amount) || 0;
-  const amtPaid = txn.amountPaid != null ? Number(txn.amountPaid) : totalAmt;
-  const udhaar = totalAmt - amtPaid;
+  const shopName = options.shopName || options.businessName || txn.shopName || txn.businessName || 'Profitly';
+  const showGstin = Boolean(options.showGstin && options.gstin);
+  const gstinLine = showGstin ? `<div class="brand-sub">GSTIN: ${options.gstin}</div>` : '';
 
-  let paymentBadge = '';
-  if (udhaar <= 0) paymentBadge = '<span class="badge badge-paid">Fully Paid</span>';
-  else if (amtPaid > 0) paymentBadge = '<span class="badge badge-partial">Partial Payment</span>';
-  else paymentBadge = '<span class="badge badge-udhaar">Full Udhaar</span>';
+  const paymentBadge = '<span class="badge badge-paid">Receipt</span>';
 
   const itemsHTML = (txn.items || []).map((item, i) => {
     const name = item.product?.name || item.name || 'Item';
@@ -117,8 +113,6 @@ export function downloadInvoicePDF(txn) {
 
   const totalsHTML = `
     <div class="totals-row"><span>Subtotal</span><span>₹${totalAmt.toFixed(2)}</span></div>
-    ${!isWalkin ? `<div class="totals-row"><span>Amount Paid</span><span>₹${amtPaid.toFixed(2)}</span></div>` : ''}
-    ${udhaar > 0 ? `<div class="totals-row udhaar"><span>Udhaar (Pending)</span><span>₹${udhaar.toFixed(2)}</span></div>` : ''}
     <div class="totals-row total-final"><span>Total</span><span>₹${totalAmt.toFixed(2)}</span></div>
   `;
 
@@ -126,8 +120,9 @@ export function downloadInvoicePDF(txn) {
   <style>${baseStyles()}</style></head><body><div class="page">
     <div class="inv-header">
       <div>
-        <div class="brand">Profitly</div>
+        <div class="brand">${shopName}</div>
         <div class="brand-sub">Smart Business Ledger</div>
+        ${gstinLine}
       </div>
       <div class="inv-meta">
         <div class="inv-no">Invoice #${shortId}</div>
@@ -138,9 +133,13 @@ export function downloadInvoicePDF(txn) {
 
     <div class="party-section">
       <div class="party-block">
-        <h4>Bill To</h4>
-        <p>${partyName}</p>
+        <h4>Receipt Type</h4>
+        <p>Sales Receipt</p>
         ${txn.note ? `<p class="sub">${txn.note}</p>` : ''}
+      </div>
+      <div class="party-block">
+        <h4>Shop Name</h4>
+        <p>${shopName}</p>
       </div>
       <div class="party-block">
         <h4>Sale Details</h4>

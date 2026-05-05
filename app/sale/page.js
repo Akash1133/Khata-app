@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ProductStore, PartyStore, TransactionStore } from '../lib/store';
+import { ProductStore, PartyStore, TransactionStore, UserStore } from '../lib/store';
 import Button from '../components/Button';
 import Input from '../components/Input';
+import { downloadInvoicePDF } from '../lib/pdfUtils';
 
 export default function SalePage() {
   const router = useRouter();
@@ -31,6 +32,8 @@ export default function SalePage() {
   // Checkout State
   const [selectedParty, setSelectedParty] = useState('');
   const [newPartyName, setNewPartyName] = useState('');
+  const [newPartyPhone, setNewPartyPhone] = useState('');
+  const [invoiceWithGstin, setInvoiceWithGstin] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState('full_paid'); // full_paid, partial, full_udhaar
   const [amountPaid, setAmountPaid] = useState('');
   const [saleDate, setSaleDate] = useState(todayStr);
@@ -66,7 +69,14 @@ export default function SalePage() {
       setParties(parts);
       setLoading(false);
     });
+    setInvoiceWithGstin(localStorage.getItem('khata_pref_invoice_gst') !== 'off');
   }, []);
+
+  const toggleInvoiceGstin = () => {
+    const nextValue = !invoiceWithGstin;
+    setInvoiceWithGstin(nextValue);
+    localStorage.setItem('khata_pref_invoice_gst', nextValue ? 'on' : 'off');
+  };
 
   // When user selects a product, immediately add it to the list with qty 1
   const handleProductSelect = (productId) => {
@@ -225,6 +235,8 @@ export default function SalePage() {
       return;
     }
 
+    const normalizedNewPartyPhone = String(newPartyPhone || '').replace(/\D/g, '');
+
     const computedAmountPaid = (selectedParty || newPartyName) ? (
       paymentStatus === 'full_paid' ? totalAmount : 
       paymentStatus === 'full_udhaar' ? 0 : 
@@ -238,6 +250,7 @@ export default function SalePage() {
       date: `${saleDate}T12:00:00`,
       partyId: selectedParty || null,
       newPartyName: (!selectedParty && isUdhaar) ? newPartyName.trim() : null,
+      newPartyPhone: (!selectedParty && isUdhaar && normalizedNewPartyPhone) ? normalizedNewPartyPhone : null,
       amountPaid: computedAmountPaid,
       items: cart.map(c => ({
         productId: c.product.id,
@@ -248,19 +261,24 @@ export default function SalePage() {
 
     const res = await TransactionStore.add(transactionData);
     if (res.success) {
+      const selectedPartyName = selectedParty ? parties.find(p => p.id === selectedParty)?.name : '';
+      const invoiceCustomerName = selectedPartyName || (isUdhaar ? newPartyName.trim() : '') || 'Walk-in Customer';
       setSuccessData({
+        id: res.data?.id,
         totalAmount,
         totalItems: totalItemsCount,
         amountPaid: computedAmountPaid,
         items: cart.map(c => ({ name: c.product.name, qty: c.quantity, price: c.price })),
-        partyName: selectedParty ? parties.find(p => p.id === selectedParty)?.name : (newPartyName || 'Walk-in Customer'),
-        saleDate
+        partyName: invoiceCustomerName,
+        saleDate,
+        note: note || 'Point of Sale'
       });
       setCart([]);
       setNote('');
       setSaleDate(todayStr);
       setSelectedParty('');
       setNewPartyName('');
+      setNewPartyPhone('');
       setAmountPaid('');
       setPaymentStatus('full_paid');
     } else {
@@ -272,6 +290,21 @@ export default function SalePage() {
   if (loading) return <div className="loading">Loading...</div>;
 
   if (successData) {
+    const user = UserStore.get() || {};
+    const printWithGstin = invoiceWithGstin;
+    const invoiceTxn = {
+      id: successData.id || `sale-${Date.now()}`,
+      date: `${successData.saleDate}T12:00:00`,
+      amount: successData.totalAmount,
+      amountPaid: successData.amountPaid,
+      note: successData.note,
+      party: successData.partyName !== 'Walk-in Customer' ? { name: successData.partyName } : null,
+      items: successData.items.map((item) => ({
+        name: item.name,
+        quantity: item.qty,
+        price: item.price,
+      })),
+    };
     return (
       <div className="sale-page">
         <div className="sale-content success-view">
@@ -314,6 +347,18 @@ export default function SalePage() {
               </div>
             ))}
           </div>
+          <Button
+            onClick={() => downloadInvoicePDF(invoiceTxn, {
+              businessName: user.businessName || 'Profitly',
+              shopName: user.businessName || 'Profitly',
+              gstin: user.gstin,
+              showGstin: printWithGstin,
+            })}
+            fullWidth
+            size="lg"
+          >
+            Download Invoice
+          </Button>
           <Button onClick={() => setSuccessData(null)} fullWidth size="lg">New Sale</Button>
           <Button variant="outline" onClick={() => router.push('/dashboard')} fullWidth style={{ marginTop: 12 }}>Back to Dashboard</Button>
         </div>
@@ -549,6 +594,7 @@ export default function SalePage() {
                 onChange={(e) => {
                   setSelectedParty(e.target.value);
                   setNewPartyName('');
+                  setNewPartyPhone('');
                   if (!e.target.value) { setAmountPaid(''); setPaymentStatus('full_paid'); }
                 }}
                 className="custom-select"
@@ -582,6 +628,14 @@ export default function SalePage() {
                     onChange={(e) => setNewPartyName(e.target.value)}
                     placeholder="Customer Name (Required to save Udhaar)"
                     className="custom-select"
+                  />
+                  <input
+                    type="tel"
+                    value={newPartyPhone}
+                    onChange={(e) => setNewPartyPhone(e.target.value)}
+                    placeholder="Mobile Number (Optional)"
+                    className="custom-select"
+                    style={{ marginTop: 8 }}
                   />
                   <p className="udhaar-hint" style={{ color: '#A0A0B8', marginTop: 4 }}>A new ledger entry will be created automatically.</p>
                 </div>
@@ -617,6 +671,16 @@ export default function SalePage() {
               onChange={(e) => setNote(e.target.value)}
               placeholder="e.g. Paid via UPI"
             />
+
+            <button className="gst-sale-toggle" type="button" onClick={toggleInvoiceGstin}>
+              <span>
+                <span className="gst-toggle-title">GST Invoice</span>
+                <span className="gst-toggle-sub">{invoiceWithGstin ? 'GSTIN will print on receipt' : 'Receipt without GSTIN'}</span>
+              </span>
+              <span className={`gst-switch ${invoiceWithGstin ? 'on' : ''}`} aria-hidden="true">
+                <span className="gst-switch-thumb" />
+              </span>
+            </button>
 
             <Button 
               onClick={handleCompleteSale} 
@@ -720,6 +784,57 @@ export default function SalePage() {
         .pmode-btn { flex: 1; padding: 10px 4px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-surface-subtle); color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .pmode-btn.active { background: #7B42C4; color: #FFFFFF; border-color: #7B42C4; }
         .udhaar-hint { font-size: 12px; color: var(--color-danger); margin-top: 6px; font-weight: 600; }
+        .gst-sale-toggle {
+          width: 100%;
+          min-height: 56px;
+          padding: 10px 14px;
+          border-radius: 12px;
+          background: var(--bg-surface-solid);
+          border: 1px solid var(--border-color);
+          color: var(--text-primary);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          margin-top: 8px;
+          text-align: left;
+        }
+        .gst-toggle-title {
+          display: block;
+          font-size: 13px;
+          font-weight: 700;
+          margin-bottom: 3px;
+        }
+        .gst-toggle-sub {
+          display: block;
+          font-size: 11px;
+          color: var(--text-secondary);
+          line-height: 1.25;
+        }
+        .gst-switch {
+          width: 46px;
+          height: 26px;
+          border-radius: 999px;
+          padding: 3px;
+          background: var(--bg-input);
+          border: 1px solid var(--border-color);
+          flex-shrink: 0;
+          transition: background .2s, border-color .2s;
+        }
+        .gst-switch.on {
+          background: linear-gradient(135deg, #22c55e, #16a34a);
+          border-color: rgba(22,163,74,.55);
+        }
+        .gst-switch-thumb {
+          display: block;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: #fff;
+          box-shadow: 0 2px 8px rgba(0,0,0,.25);
+          transition: transform .2s ease;
+        }
+        .gst-switch.on .gst-switch-thumb { transform: translateX(20px); }
         
         .cart-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
         .cart-item { padding: 12px; background: var(--bg-surface-subtle); border-radius: 12px; }

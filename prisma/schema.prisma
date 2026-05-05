@@ -15,6 +15,7 @@ model User {
   name         String?
   email        String?
   businessName String?
+  gstin        String?
   createdAt    DateTime      @default(now())
   parties      Party[]
   products     Product[]

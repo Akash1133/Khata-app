@@ -12,11 +12,16 @@ function normalizeUsername(username) {
   return String(username || '').trim().toLowerCase();
 }
 
+function normalizeGstin(gstin) {
+  return String(gstin || '').trim().toUpperCase();
+}
+
 export async function POST(request) {
   try {
-    const { username, password, name } = await request.json();
+    const { username, password, name, gstin } = await request.json();
     const uname = normalizeUsername(username);
     const pwd = String(password || '');
+    const nextGstin = normalizeGstin(gstin);
 
     if (!uname || uname.length < 3) {
       return NextResponse.json({ error: 'Username must be at least 3 characters.' }, { status: 400 });
@@ -40,7 +45,8 @@ export async function POST(request) {
       data: {
         username: uname,
         passwordHash: hashPassword(pwd),
-        name: (name || '').trim() || 'New User'
+        name: (name || '').trim() || 'New User',
+        gstin: nextGstin || null
       }
     });
 

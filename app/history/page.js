@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { TransactionStore } from '../lib/store';
+import { TransactionStore, UserStore } from '../lib/store';
 import { downloadInvoicePDF } from '../lib/pdfUtils';
 
 // Helper to get auth headers for API calls
@@ -72,6 +72,18 @@ export default function HistoryPage() {
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  const downloadSelectedInvoice = () => {
+    if (!selectedTxn) return;
+    const user = UserStore.get() || {};
+    const printWithGstin = localStorage.getItem('khata_pref_invoice_gst') !== 'off';
+    downloadInvoicePDF(selectedTxn, {
+      businessName: user.businessName || 'Profitly',
+      shopName: user.businessName || 'Profitly',
+      gstin: user.gstin,
+      showGstin: printWithGstin,
+    });
   };
 
   const toggleItem = (itemId, maxQty) => {
@@ -422,7 +434,7 @@ export default function HistoryPage() {
             {/* Action Buttons */}
             {selectedTxn.type === 'sale' && !returnMode && (
               <div className="sheet-actions">
-                <button className="action-btn download-inv" onClick={() => downloadInvoicePDF(selectedTxn)}>
+                <button className="action-btn download-inv" onClick={downloadSelectedInvoice}>
                   <span>🧾</span> Download Invoice PDF
                 </button>
                 <button className="action-btn return-all" onClick={() => setReturnMode('confirm-all')}>
@@ -506,7 +518,6 @@ export default function HistoryPage() {
           color: var(--text-primary); font-size:12px;
         }
         .to-sep { font-size:12px; color: var(--text-muted); }
-
         .empty { text-align:center; padding:60px 16px; }
         .empty-icon { font-size:48px; margin-bottom:12px; }
         .empty-title { font-size:16px; font-weight:600; color: var(--text-primary); margin-bottom:6px; }

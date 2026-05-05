@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { PartyStore, TransactionStore } from '../../lib/store';
+import { PartyStore, TransactionStore, UserStore } from '../../lib/store';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
 
@@ -18,6 +18,9 @@ export default function PartyDetailsPage({ params }) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [savingEntry, setSavingEntry] = useState(false);
+  const [showPhoneEditor, setShowPhoneEditor] = useState(false);
+  const [phoneDraft, setPhoneDraft] = useState('');
+  const [savingPhone, setSavingPhone] = useState(false);
 
   useEffect(() => {
     loadParty();
@@ -72,6 +75,62 @@ export default function PartyDetailsPage({ params }) {
     return 'Ledger Entry';
   };
 
+  const toDigits = (rawPhone) => String(rawPhone || '').replace(/\D/g, '');
+  const normalizeForSms = (rawPhone) => {
+    const input = String(rawPhone || '').trim();
+    if (!input) return '';
+    if (input.startsWith('+')) return `+${toDigits(input)}`;
+    const digits = toDigits(input);
+    if (digits.length === 10) return `+91${digits}`;
+    if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
+    return digits ? `+${digits}` : '';
+  };
+  const normalizeForStorage = (rawPhone) => {
+    const input = String(rawPhone || '').trim();
+    if (!input) return '';
+    if (input.startsWith('+')) return `+${toDigits(input)}`;
+    return toDigits(input);
+  };
+
+  const buildReminderMessage = () => {
+    const user = UserStore.get() || {};
+    const shopName = user.businessName || 'our shop';
+    const amount = Math.abs(Number(party.balance || 0)).toFixed(2);
+
+    if (party.balance > 0) {
+      return `नमस्ते ${party.name} जी,\nयह ${shopName} की ओर से एक सौम्य स्मरण है कि आपके खाते में ₹${amount} की राशि अभी शेष है।\nआपसे निवेदन है कि कृपया अपनी सुविधा अनुसार इसका भुगतान कर दें।\nआपके सहयोग के लिए धन्यवाद।`;
+    }
+
+    return `नमस्ते ${party.name} जी,\nयह ${shopName} की ओर से एक सूचना है कि आपके खाते के अनुसार ₹${amount} का भुगतान हमारी ओर से लंबित है।\nकृपया निश्चिंत रहें, इसे शीघ्र ही निपटा दिया जाएगा।\nआपके सहयोग के लिए धन्यवाद।`;
+  };
+
+  const handleSendReminder = () => {
+    const phone = normalizeForSms(party.phone);
+    if (!phone || Number(party.balance) === 0) return;
+
+    const message = buildReminderMessage();
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const separator = isIOS ? '&' : '?';
+    const smsUrl = `sms:${phone}${separator}body=${encodeURIComponent(message)}`;
+
+    // Important constraint: we only open compose UI; user must tap Send manually.
+    window.location.href = smsUrl;
+  };
+
+  const handleSavePhone = async (e) => {
+    e.preventDefault();
+    if (savingPhone) return;
+    const nextPhone = normalizeForStorage(phoneDraft);
+    if (!nextPhone) return;
+    setSavingPhone(true);
+    const updated = await PartyStore.update(party.id, { phone: nextPhone });
+    setSavingPhone(false);
+    if (!updated) return;
+    setShowPhoneEditor(false);
+    setPhoneDraft('');
+    await loadParty();
+  };
+
   if (loading || !party) return <div className="loading">Loading...</div>;
 
   return (
@@ -85,6 +144,16 @@ export default function PartyDetailsPage({ params }) {
             <h1>{party.name}</h1>
             <p>{party.phone || 'No phone'}</p>
           </div>
+          <button
+            className="phone-edit-btn"
+            onClick={() => {
+              setPhoneDraft(party.phone || '');
+              setShowPhoneEditor(true);
+            }}
+            type="button"
+          >
+            {party.phone ? 'Edit' : 'Add'}
+          </button>
         </div>
 
         <div className="balance-card">
@@ -97,6 +166,17 @@ export default function PartyDetailsPage({ params }) {
              <h2 className="bal-give">₹{Math.abs(party.balance)} <small>You will give</small></h2>
           )}
         </div>
+
+        {party.balance !== 0 && (
+          <button
+            className="reminder-btn"
+            onClick={handleSendReminder}
+            disabled={!normalizeForSms(party.phone)}
+            title={normalizeForSms(party.phone) ? 'Open SMS with prefilled reminder' : 'Add phone number to send reminder'}
+          >
+            {normalizeForSms(party.phone) ? 'Send Reminder' : 'Add phone number to send reminder'}
+          </button>
+        )}
 
         <div className="action-row">
           {party.type === 'customer' ? (
@@ -172,6 +252,27 @@ export default function PartyDetailsPage({ params }) {
             </div>
           </div>
         )}
+
+        {showPhoneEditor && (
+          <div className="modal-overlay" onClick={() => setShowPhoneEditor(false)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <h2>Update Phone Number</h2>
+              <form onSubmit={handleSavePhone}>
+                <Input
+                  label="Phone Number *"
+                  value={phoneDraft}
+                  onChange={(e) => setPhoneDraft(e.target.value)}
+                  placeholder="10-digit or +91 format"
+                  autoFocus
+                />
+                <div className="modal-actions">
+                  <button type="button" className="cancel-btn" onClick={() => setShowPhoneEditor(false)} disabled={savingPhone}>Cancel</button>
+                  <Button type="submit" loading={savingPhone} disabled={savingPhone || !normalizeForStorage(phoneDraft)}>Save Phone</Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
 
       <style jsx>{`
@@ -181,6 +282,16 @@ export default function PartyDetailsPage({ params }) {
         .back-btn { background: rgba(255,255,255,0.05); border: none; width: 40px; height: 40px; border-radius: 12px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .header h1 { font-size: 20px; font-weight: 700; margin: 0; }
         .header p { font-size: 13px; color: var(--text-secondary); margin: 0; }
+        .phone-edit-btn {
+          height: 32px;
+          padding: 0 12px;
+          border-radius: 8px;
+          border: 1px solid var(--border-color);
+          background: var(--bg-surface-solid);
+          color: var(--text-primary);
+          font-size: 12px;
+          font-weight: 700;
+        }
         
         .balance-card { background: var(--bg-surface-solid); border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.04); }
         .bal-label { font-size: 14px; color: var(--text-secondary); margin-bottom: 8px; }
@@ -188,6 +299,21 @@ export default function PartyDetailsPage({ params }) {
         .bal-get { font-size: 28px; color: var(--color-success); }
         .bal-give { font-size: 28px; color: var(--color-danger); }
         .balance-card small { font-size: 14px; opacity: 0.8; font-weight: 500; display: block; margin-top: 4px; }
+        .reminder-btn {
+          width: 100%;
+          margin: 0 0 14px;
+          min-height: 46px;
+          border-radius: 12px;
+          background: var(--bg-surface-solid);
+          border: 1px solid var(--border-color);
+          color: var(--text-primary);
+          font-size: 14px;
+          font-weight: 700;
+        }
+        .reminder-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
 
         .action-row { display: flex; gap: 12px; margin-bottom: 32px; }
         .action-btn { flex: 1; padding: 12px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; color: var(--text-primary); cursor: pointer; transition: transform 0.2s; display: flex; flex-direction: column; align-items: center; gap: 4px; }

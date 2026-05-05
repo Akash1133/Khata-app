@@ -6,23 +6,29 @@ export const metadata = {
   title: 'Profitly - Smart Business Ledger',
   description: 'Manage your business ledger, inventory, and profits with ease. Track sales, purchases, and party ledgers.',
   manifest: '/manifest.json',
-  themeColor: '#0D0D1A',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover',
+};
+
+export const viewport = {
+  themeColor: '#F5F7FB',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" data-theme="system" suppressHydrationWarning>
+    <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 try {
-                  var theme = localStorage.getItem('khata_pref_theme') || 'system';
+                  var theme = localStorage.getItem('khata_pref_theme') || 'light';
                   document.documentElement.setAttribute('data-theme', theme);
                 } catch (e) {
-                  document.documentElement.setAttribute('data-theme', 'system');
+                  document.documentElement.setAttribute('data-theme', 'light');
                 }
               })();
             `,

@@ -16,6 +16,9 @@ export default function KhataPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [newParty, setNewParty] = useState({ name: '', phone: '', type: 'customer' });
+  const [editingParty, setEditingParty] = useState(null);
+  const [editPhone, setEditPhone] = useState('');
+  const [isPhoneSaving, setIsPhoneSaving] = useState(false);
 
   useEffect(() => {
     loadParties();
@@ -38,6 +41,30 @@ export default function KhataPage() {
       loadParties();
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const normalizePhoneForStorage = (rawPhone) => {
+    const input = String(rawPhone || '').trim();
+    if (!input) return '';
+    const digits = input.replace(/\D/g, '');
+    if (input.startsWith('+')) return `+${digits}`;
+    return digits;
+  };
+
+  const handleSavePhone = async (e) => {
+    e.preventDefault();
+    if (!editingParty || isPhoneSaving) return;
+    const phone = normalizePhoneForStorage(editPhone);
+    if (!phone) return;
+    setIsPhoneSaving(true);
+    try {
+      await PartyStore.update(editingParty.id, { phone });
+      setEditingParty(null);
+      setEditPhone('');
+      await loadParties();
+    } finally {
+      setIsPhoneSaving(false);
     }
   };
 
@@ -101,6 +128,17 @@ export default function KhataPage() {
                   <p className="party-name">{p.name}</p>
                   <p className="party-type">{p.type === 'customer' ? 'Customer' : 'Supplier'}</p>
                 </div>
+                <button
+                  className="phone-chip"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingParty(p);
+                    setEditPhone(p.phone || '');
+                  }}
+                >
+                  {p.phone ? 'Edit Phone' : 'Add Phone'}
+                </button>
                 <div className="party-bal">
                   {p.balance === 0 ? (
                     <span className="bal-settled">Settled</span>
@@ -139,6 +177,21 @@ export default function KhataPage() {
             </div>
           </div>
         )}
+
+        {editingParty && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h2>Update Phone Number</h2>
+              <form onSubmit={handleSavePhone}>
+                <Input label="Phone *" value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="10-digit or +91 format" autoFocus />
+                <div className="modal-actions">
+                  <button type="button" className="cancel-btn" onClick={() => setEditingParty(null)} disabled={isPhoneSaving}>Cancel</button>
+                  <Button type="submit" loading={isPhoneSaving} disabled={isPhoneSaving || !normalizePhoneForStorage(editPhone)}>Save Phone</Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
 
       <style jsx>{`
@@ -166,6 +219,19 @@ export default function KhataPage() {
         .party-info { flex: 1; }
         .party-name { font-size: 15px; font-weight: 600; }
         .party-type { font-size: 12px; color: var(--text-muted); text-transform: capitalize; }
+        .phone-chip {
+          margin-right: 10px;
+          min-width: 82px;
+          height: 30px;
+          padding: 0 10px;
+          border-radius: 999px;
+          border: 1px solid var(--border-color);
+          background: var(--bg-surface-subtle);
+          color: var(--text-secondary);
+          font-size: 11px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
         .party-bal { text-align: right; }
         .bal-settled { color: var(--text-secondary); font-size: 13px; font-weight: 500; }
         .bal-get { color: var(--color-success); font-size: 15px; font-weight: 700; display: flex; flex-direction: column; }
